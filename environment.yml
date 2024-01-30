@@ -1,4 +1,4 @@
-name: inflation-macro
+name: inflation
 channels:
   - defaults
   - conda-forge
