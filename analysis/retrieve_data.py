@@ -11,11 +11,11 @@ def get_fed_data(series, clean_data=True, **kwargs):
     :param bool: clean_data Remove headers in json
 
     Some series codes:
-    - Michigan Perceived Inflation (MICH)
-    - 1-Year Expected Inflation (EXPINF1YR)
-    - US CPI (CPIAUCSL) -- use with `units="pc1", freq="m"`
-    - Personal Savings Rate (PSAVERT)
-    - Personal Consumption Expenditure (PCE) -- use with `units='pc1'`
+    - Michigan Perceived Inflation (`"MICH"`)
+    - 1-Year Expected Inflation (`"EXPINF1YR"`)
+    - US CPI (`"CPIAUCSL", units="pc1", freq="m"`)
+    - Personal Savings Rate (`"PSAVERT"`)
+    - Personal Consumption Expenditure (`"PCE", units="pc1"`)
     """
 
     ## API GET request
