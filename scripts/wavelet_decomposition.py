@@ -70,15 +70,16 @@ df.head()
 
 # %%
 # Perform wavelet decomposition
+
+t = df["date"]
+y = df["value"]
+
 ## Choose the wavelet type, here using Daubechies 4
 WAVELET = "db4"
 w = pywt.Wavelet(WAVELET)
 ## Choose the maximum decomposition level
-level = pywt.dwt_max_level(data_len=len(df), filter_len=w.dec_len)
+level = pywt.dwt_max_level(data_len=len(y), filter_len=w.dec_len)
 print("Max decomposition level:", level)
-
-t = df["date"]
-y = df["value"]
 
 coeffs = pywt.wavedec(y, WAVELET, level=level)
 
