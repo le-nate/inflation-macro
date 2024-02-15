@@ -21,8 +21,9 @@ consumption_values = consumption(i_values)
 
 # %%
 # Perform wavelet decomposition
-WAVELET = "sym12"  # Choose the wavelet type, here using Daubechies 4
+WAVELET = "sym12"  ## Wavelet type, Symmlet 12
 w = pywt.Wavelet(WAVELET)
+
 ## Choose the maximum decomposition level
 level = pywt.dwt_max_level(data_len=len(consumption_values), filter_len=w.dec_len)
 print("Max decomposition level:", level)
