@@ -1,3 +1,10 @@
+"""
+Wavelet decomposition of consumption simulation, from:
+Ramsey, J. B., Gallegati, M., Gallegati, M., & Semmler, W. (2010). 
+        Instrumental variables and wavelet decompositions. Economic Modelling,
+        27(6), 1498–1513. https://doi.org/10.1016/j.econmod.2010.07.011
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pywt
@@ -11,17 +18,20 @@ i_values = np.linspace(1, 512, 1000)
 consumption_values = consumption(i_values)
 
 # Perform wavelet decomposition
-WAVELET = "db4"  # Choose the wavelet type, here using Daubechies 4
-LEVEL = 3  # Choose the decomposition level
+WAVELET = "sym12"  # Choose the wavelet type, here using Daubechies 4
+w = pywt.Wavelet(WAVELET)
+## Choose the maximum decomposition level
+level = pywt.dwt_max_level(data_len=len(consumption_values), filter_len=w.dec_len)
+print("Max decomposition level:", level)
 
-coeffs = pywt.wavedec(consumption_values, WAVELET, level=LEVEL)
+coeffs = pywt.wavedec(consumption_values, WAVELET, level=level)
 
 # Plot the original signal and the approximation and detail coefficients
 plt.figure(figsize=(10, 6))
 plt.plot(i_values, consumption_values, "b", label="Original Signal")
 
 # Plot approximation coefficients
-for i in range(1, LEVEL + 1):
+for i in range(1, level + 1):
     approx_coefficients = pywt.upcoef(
         "a", coeffs[i], WAVELET, level=i, take=len(consumption_values)
     )
@@ -33,7 +43,7 @@ for i in range(1, LEVEL + 1):
     )
 
 # Plot detail coefficients
-for i in range(1, LEVEL + 1):
+for i in range(1, level + 1):
     detail_coefficients = pywt.upcoef(
         "d", coeffs[i], WAVELET, level=i, take=len(consumption_values)
     )
