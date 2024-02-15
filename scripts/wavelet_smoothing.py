@@ -25,7 +25,7 @@ plt.rc("legend", fontsize=SMALL_SIZE)  # legend fontsize
 plt.rc("figure", titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 # %%
-raw_data = rd.get_fed_data("PSAVERT")
+raw_data = rd.get_fed_data("CPIAUCSL", units="pc1", freq="m")
 
 # %%
 ## Convert to dataframe
@@ -51,19 +51,26 @@ df.head()
 t = df["date"]
 y = df["value"]
 
-## Choose the wavelet type, here using Daubechies 4
+## Define the wavelet type
 WAVELET = "db4"
 w = pywt.Wavelet(WAVELET)
 
 ## Choose the maximum decomposition level
 levels = pywt.dwt_max_level(data_len=len(y), filter_len=w.dec_len)
-print("Max decomposition level:", levels)
+print(f"Max decomposition level of {levels} for time series length of {len(y)}")
 
 coeffs = pywt.wavedec(y, WAVELET, level=levels)
 
 # %%
-# ## Create dict for reconstructed signals
+## Create dict for reconstructed signals
 smooth_signals = {}
+
+## Time series with uneven result in mismatched lengths with the reconstructed
+## signal, so we remove the final value from the signal
+if len(y) % 2 != 0:
+    print("Removing extra data approximated point")
+else:
+    pass
 
 ## Loop through levels and add detail level components
 for l in range(levels):
@@ -74,7 +81,11 @@ for l in range(levels):
         smooth_coeffs[i] = np.zeros_like(smooth_coeffs[i])
     smooth_signals[l]["coeffs"] = smooth_coeffs
     # Reconstruct the signal using only the approximation coefficients
-    smooth_signals[l]["signal"] = pywt.waverec(smooth_coeffs, WAVELET)
+    reconst = pywt.waverec(smooth_coeffs, WAVELET)
+    if len(y) % 2 != 0:
+        smooth_signals[l]["signal"] = reconst[:-1]
+    else:
+        smooth_signals[l]["signal"] = reconst
 
 # %%
 
@@ -89,7 +100,7 @@ for i, (level, signal) in enumerate(smooth_signals.items(), 1):
     plt.plot(t, y, label=name.title())
     plt.plot(t, signal["signal"])
     plt.xlabel("Year")
-    plt.ylabel(f"{name.capitalize()}")
+    plt.grid()
     plt.title(rf"Approximation: $S_{{j-{level}}}$")
     plt.legend()
 
