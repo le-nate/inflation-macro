@@ -13,9 +13,9 @@ def get_fed_data(series, clean_data=True, **kwargs):
     Some series codes:
     - Michigan Perceived Inflation (MICH)
     - 1-Year Expected Inflation (EXPINF1YR)
-    - US CPI (CPIAUCSL)
+    - US CPI (CPIAUCSL) -- use with `units="pc1", freq="m"`
     - Personal Savings Rate (PSAVERT)
-    - Personal Consumption Expenditure (PCE)
+    - Personal Consumption Expenditure (PCE) -- use with `units='pc1'`
     """
 
     ## API GET request
@@ -30,7 +30,6 @@ def get_fed_data(series, clean_data=True, **kwargs):
         "series_id": series,
         "units": units,
         "freq": freq,
-        "errors": errors,
         "file_type": "json",
     }
 
