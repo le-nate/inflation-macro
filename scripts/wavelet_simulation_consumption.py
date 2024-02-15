@@ -5,18 +5,21 @@ Ramsey, J. B., Gallegati, M., Gallegati, M., & Semmler, W. (2010).
         27(6), 1498–1513. https://doi.org/10.1016/j.econmod.2010.07.011
 """
 
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 import pywt
 
 from simulation_consumption import consumption
 
+# %%
 # Generate values for i
 i_values = np.linspace(1, 512, 1000)
 
 # Calculate consumption values
 consumption_values = consumption(i_values)
 
+# %%
 # Perform wavelet decomposition
 WAVELET = "sym12"  # Choose the wavelet type, here using Daubechies 4
 w = pywt.Wavelet(WAVELET)
@@ -26,6 +29,7 @@ print("Max decomposition level:", level)
 
 coeffs = pywt.wavedec(consumption_values, WAVELET, level=level)
 
+# %%
 # Plot the original signal and the approximation and detail coefficients
 plt.figure(figsize=(10, 6))
 plt.plot(i_values, consumption_values, "b", label="Original Signal")
