@@ -80,7 +80,7 @@ if __name__ == "__main__":
 
     coeffs = pywt.wavedec(y, WAVELET, level=levels)
 
-    smooth_signals = smooth_signal(coeffs, levels)
+    smooth_signals = smooth_signal(coeffs, levels, WAVELET)
 
     ## Input name of time series
     print("Enter name of time series (to be included in plot)")
