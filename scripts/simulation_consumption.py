@@ -48,31 +48,32 @@ def consumption(i, exp_const=0.9, sin_const=0.6):
     return exp_const * y_exp(i) + sin_const * y_sin(i) + error_function(i)
 
 
-# Example usage:
-x_values = np.linspace(0, 2 * np.pi, 1000)
-error_terms = error_function(x_values)
+if __name__ == "__main__":
+    # Example usage:
+    x_values = np.linspace(0, 2 * np.pi, 1000)
+    error_terms = error_function(x_values)
 
-# Generate values for i
-i_values = np.linspace(1, 512, 1000)
+    # Generate values for i
+    i_values = np.linspace(1, 512, 1000)
 
-# Calculate function values for each i
-income_values = income(i_values)
-consumption_values = consumption(i_values)
+    # Calculate function values for each i
+    income_values = income(i_values)
+    consumption_values = consumption(i_values)
 
-# Plot the graph
-plt.plot(
-    i_values,
-    income_values,
-    label=r"Income = $e^{2(i/512)} + \sin\left(\frac{i \pi}{7.8}\right)$",
-)
-plt.plot(
-    i_values,
-    consumption_values,
-    label=r"Consumption = 0.9*$e^{2(i/512)} + 0.6*\sin\left(\frac{i \pi}{7.8}\right) + \epsilon$",
-)
-plt.xlabel("i")
-plt.ylabel("Income and consumption")
-plt.title("Cyclical income and consumption functions")
-plt.legend()
-plt.grid(True)
-plt.show()
+    # Plot the graph
+    plt.plot(
+        i_values,
+        income_values,
+        label=r"Income = $e^{2(i/512)} + \sin\left(\frac{i \pi}{7.8}\right)$",
+    )
+    plt.plot(
+        i_values,
+        consumption_values,
+        label=r"Consumption = 0.9*$e^{2(i/512)} + 0.6*\sin\left(\frac{i \pi}{7.8}\right) + \epsilon$",
+    )
+    plt.xlabel("i")
+    plt.ylabel("Income and consumption")
+    plt.title("Cyclical income and consumption functions")
+    plt.legend()
+    plt.grid(True)
+    plt.show()

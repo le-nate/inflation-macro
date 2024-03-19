@@ -65,7 +65,7 @@ def smooth_signal(signal: list, wavelet: str) -> dict:
         signals_dict[l]["coeffs"] = smooth_coeffs
         # Reconstruct the signal using only the approximation coefficients
         reconst = pywt.waverec(smooth_coeffs, wavelet)
-        signals_dict[l]["signal"] = trim_signal(y, reconst)
+        signals_dict[l]["signal"] = trim_signal(signal, reconst)
 
     return signals_dict
 
