@@ -89,7 +89,7 @@ def clean_fed_data(data) -> tuple[list, list]:
     return t, y
 
 
-def get_insee_data(series_id):
+def get_insee_data(series_id: str) -> list:
     """
     Retrieve data (Series_BDM) from INSEE API
     :param str: series_id INSEE indicator's code (see suggestions below)
@@ -120,7 +120,7 @@ def get_insee_data(series_id):
     return response_data
 
 
-def clean_insee_data(data) -> tuple[list, list]:
+def clean_insee_data(data: list) -> tuple[list, list]:
     """
     Convert INSEE data to time and endogenous variables (t, y)
     :param str: series_name

@@ -15,7 +15,15 @@ data = rd.get_fed_data("EXPINF1YR", no_headers=False)
 assert isinstance(data, dict)
 
 # %%
-# TODO: Tests INSEE functions
+print("Testing get_insee_data")
+data = rd.get_insee_data("000857180")
+assert isinstance(data, list)
+
+print("Testing clean_insee_data")
+clean_t, clean_y = rd.clean_insee_data(data)
+assert isinstance(clean_y, list)
+assert isinstance(clean_t, list)
+
 
 # %%
 print("Testing get_bdf_data, with series_key and dataset")
