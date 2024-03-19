@@ -65,7 +65,7 @@ def get_fed_data(series, no_headers=True, **kwargs):
         return None
 
 
-def clean_fed_data(data):
+def clean_fed_data(data) -> tuple[list, list]:
     """Convert Fed data to time and endogenous variables (t, y)"""
 
     ## Convert to dataframe
@@ -120,7 +120,7 @@ def get_insee_data(series_id):
     return response_data
 
 
-def clean_insee_data(data):
+def clean_insee_data(data) -> tuple[list, list]:
     """
     Convert INSEE data to time and endogenous variables (t, y)
     :param str: series_name
@@ -136,8 +136,10 @@ def clean_insee_data(data):
     return t, y
 
 
-def get_bdf_data(series_key, dataset="ICP", **kwargs):
-    """Retrieve data from Banque de France API"""
+def get_bdf_data(series_key: str, dataset: str = "ICP", **kwargs) -> json:
+    """Retrieve data from Banque de France API
+    Measured inflation: `'ICP.M.FR.N.000000.4.ANR'`
+    """
 
     ## API GET request
     data_type = kwargs.get("data_type", "data")
@@ -167,6 +169,37 @@ def get_bdf_data(series_key, dataset="ICP", **kwargs):
     return response
 
 
-def clean_bdf_data(data):
-    """Clean data from Banque de France"""
-    # TODO: Convert list of dict of dict to t, y variables
+def clean_bdf_data(data: list) -> tuple[list, list]:
+    """Convert list of dicts data from Banque de France to lists for t and y"""
+    ## Dictionary of observations
+    dict_obs = {
+        "periodId": [],
+        "periodFirstDate": [],
+        "periodName": [],
+        "value": [],
+    }
+    for i in data:
+        obs = i["ObservationPeriod"]
+        for k, v in dict_obs.items():
+            v.append(obs[k])
+
+    ## Convert to df
+    df = pd.DataFrame(dict_obs)
+    data = data_to_time_series(df, "periodFirstDate")
+    data
+    t = df["periodFirstDate"].to_list()
+    y = df["value"].to_list()
+
+    return t, y
+
+
+def data_to_time_series(df, index_column, measure=None):
+    """Convert dataframe to time series"""
+    if measure is not None:
+        df = df[[index_column, "value"]][df["measure"] == measure]
+    else:
+        df = df[[index_column, "value"]]
+    ## Set date as index
+    df.set_index(index_column, inplace=True)
+    df = df.astype(float)
+    return df
