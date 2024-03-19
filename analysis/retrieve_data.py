@@ -1,14 +1,24 @@
 """Retrieve data for analysis via API from statistics agencies and central banks"""
 
+from dotenv import load_dotenv
+import json
+import numpy as np
+import pandas as pd
+import os
 import requests
+import xmltodict
 
-from .api.creds import FED_KEY
+## Retrieve API credentials
+load_dotenv()
+BDF_KEY = os.getenv("BDF_KEY")
+FED_KEY = os.getenv("FED_KEY")
+INSEE_AUTH = os.getenv("INSEE_AUTH")
 
 
-def get_fed_data(series, clean_data=True, **kwargs):
+def get_fed_data(series, no_headers=True, **kwargs):
     """Retrieve data series from FRED database and convert to time series if desired
     :param str: series Fed indicator's code (e.g. EXPINF1YR, for 1-year expected inflation)
-    :param bool: clean_data Remove headers in json
+    :param bool: no_headers Remove headers in json
 
     Some series codes:
     - Michigan Perceived Inflation (`"MICH"`)
@@ -44,7 +54,7 @@ def get_fed_data(series, clean_data=True, **kwargs):
         print(f"Requesting {series}")
         r = requests.get(final_url, timeout=5)
         r.raise_for_status()  # Raise an exception for 4XX and 5XX HTTP status codes
-        resource = r.json()["observations"] if clean_data is True else r.json()
+        resource = r.json()["observations"] if no_headers is True else r.json()
         print(f"Retrieved {series}")
         return resource
     except requests.Timeout:
@@ -53,3 +63,110 @@ def get_fed_data(series, clean_data=True, **kwargs):
     except requests.RequestException as e:
         print(f"Request error: {e}")
         return None
+
+
+def clean_fed_data(data):
+    """Convert Fed data to time and endogenous variables (t, y)"""
+
+    ## Convert to dataframe
+    df = pd.DataFrame(data)
+    print(df.info(verbose=True), "\n")
+
+    ## Convert dtypes
+    df.replace(".", np.nan, inplace=True)
+    df.dropna(inplace=True)
+    df["value"] = pd.to_numeric(df["value"])
+    df["date"] = pd.to_datetime(df["date"])
+
+    ## Drop extra columns
+    df = df[["date", "value"]]
+    print(df.dtypes)
+    print(df.describe(), "\n")
+
+    t = df["date"].to_list()
+    y = df["value"].to_list()
+
+    return t, y
+
+
+def get_insee_data(series_id):
+    """
+    Retrieve data (Series_BDM) from INSEE API
+    :param str: series_id INSEE indicator's code (see suggestions below)
+    :param str: series_name Remove headers in json
+
+    Some series codes:
+    - 'Expected inflation' `"000857180"`,
+    - 'Perceived inflation' `"000857179"`,
+    - 'Expected savings' `"000857186"`,
+    - 'Expected consumption' `"000857181"`,
+    """
+    url = f"https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/{series_id}"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {INSEE_AUTH}",
+    }
+    response = requests.get(url, headers=headers, timeout=10)
+    decoded_response = response.content.decode("utf-8")
+    response_json = json.loads(json.dumps(xmltodict.parse(decoded_response)))
+    series_title = response_json["message:StructureSpecificData"]["message:DataSet"][
+        "Series"
+    ]["@TITLE_FR"]
+    response_data = response_json["message:StructureSpecificData"]["message:DataSet"][
+        "Series"
+    ]["Obs"]
+    print(f"Retrieved {series_title}. \n{len(response_data)} observations\n")
+
+    return response_data
+
+
+def clean_insee_data(data):
+    """
+    Convert INSEE data to time and endogenous variables (t, y)
+    :param str: series_name
+    """
+    df = pd.DataFrame(data)
+    # Convert data types
+    df["@TIME_PERIOD"] = pd.to_datetime(df["@TIME_PERIOD"])
+    df["@OBS_VALUE"] = df["@OBS_VALUE"].astype(float)
+
+    t = df["@TIME_PERIOD"].to_list()
+    y = df["@OBS_VALUE"].to_list()
+
+    return t, y
+
+
+def get_bdf_data(series_key, dataset="ICP", **kwargs):
+    """Retrieve data from Banque de France API"""
+
+    ## API GET request
+    data_type = kwargs.get("data_type", "data")
+    req_format = kwargs.get("format", "json")
+    headers = {"accept": "application/json"}
+
+    base_url = "https://api.webstat.banque-france.fr/webstat-fr/v1/"
+
+    params = {
+        "data_type": data_type,
+        "dataset": dataset,
+        "series_key": series_key,
+    }
+
+    ## Remove parameters with None
+    params = {k: v for k, v in params.items() if v is not None}
+
+    ## Create final url for request
+    final_url = f"{base_url}{'/'.join([f'{v}' for k, v in params.items()])}?client_id={BDF_KEY}&format={req_format}"
+
+    print(f"Requesting {series_key}")
+    r = requests.get(final_url, headers=headers, timeout=5)
+    print(r)
+    response = r.json()
+    response = response["seriesObs"][0]["ObservationsSerie"]["observations"]
+
+    return response
+
+
+def clean_bdf_data(data):
+    """Clean data from Banque de France"""
+    # TODO: Convert list of dict of dict to t, y variables
