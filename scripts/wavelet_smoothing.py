@@ -33,7 +33,7 @@ def trim_signal(signal: list) -> list:
     return trimmed_signal
 
 
-def smooth_signal(signal_coeffs: list, levels: int) -> dict:
+def smooth_signal(signal_coeffs: list, levels: int, wavelet: str) -> dict:
     """Generate smoothed signals based off wavelet coefficients for each pre-defined level"""
     ## Initialize dict for reconstructed signals
     signals_dict = {}
@@ -47,7 +47,7 @@ def smooth_signal(signal_coeffs: list, levels: int) -> dict:
             smooth_coeffs[coeff] = np.zeros_like(smooth_coeffs[coeff])
         signals_dict[l]["coeffs"] = smooth_coeffs
         # Reconstruct the signal using only the approximation coefficients
-        reconst = pywt.waverec(smooth_coeffs, WAVELET)
+        reconst = pywt.waverec(smooth_coeffs, wavelet)
         signals_dict[l]["signal"] = trim_signal(reconst)
 
     return signals_dict
