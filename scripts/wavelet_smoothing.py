@@ -9,13 +9,13 @@ import pywt
 from analysis import retrieve_data as rd
 
 
-def trim_signal(signal: list) -> list:
+def trim_signal(original_signal: list, reconstructed: list) -> list:
     """Removes first or last observation for odd-numbered datasets"""
     ## Time series with uneven result in mismatched lengths with the reconstructed
     ## signal, so we remove a value from the approximated signal
-    if len(signal) % 2 != 0:
+    if len(original_signal) % 2 != 0:
         print(
-            f"Odd number of observations dectected (Length: {len(signal)}). Trim data? (y/n)"
+            f"Odd number of observations dectected (Length: {len(original_signal)}). Trim data? (y/n)"
         )
         trim = input()
     else:
@@ -25,22 +25,39 @@ def trim_signal(signal: list) -> list:
         print("Trim beginning or end of time series? (begin/end)")
         trim = input()
     if trim == "begin":
-        trimmed_signal = signal[1:]
+        trimmed_signal = reconstructed[1:]
     elif trim == "end":
-        trimmed_signal = signal[:-1]
+        trimmed_signal = reconstructed[:-1]
     else:
-        trimmed_signal = signal
+        trimmed_signal = reconstructed
     return trimmed_signal
 
 
-def smooth_signal(signal_coeffs: list, levels: int, wavelet: str) -> dict:
+def run_dwt(signal: list, wavelet: str) -> tuple[int, list]:
+    """Generate levels and coefficients from discrete wavelet transform with
+    given wavelet function"""
+    ## Define the wavelet type
+    w = pywt.Wavelet(wavelet)
+    ## Choose the maximum decomposition level
+    dwt_levels = pywt.dwt_max_level(data_len=len(signal), filter_len=w.dec_len)
+    print(
+        f"Max decomposition level of {dwt_levels} for time series length of {len(signal)}"
+    )
+
+    dwt_coeffs = pywt.wavedec(signal, wavelet, level=dwt_levels)
+    return dwt_levels, dwt_coeffs
+
+
+def smooth_signal(signal: list, wavelet: str) -> dict:
     """Generate smoothed signals based off wavelet coefficients for each pre-defined level"""
     ## Initialize dict for reconstructed signals
     signals_dict = {}
 
+    levels, coeffs = run_dwt(signal, wavelet)
+
     ## Loop through levels and add detail level components
     for l in range(levels):
-        smooth_coeffs = signal_coeffs.copy()
+        smooth_coeffs = coeffs.copy()
         signals_dict[l] = {}
         ## Set remaining detail coefficients to zero
         for coeff in range(1, len(smooth_coeffs) - l):
@@ -48,7 +65,7 @@ def smooth_signal(signal_coeffs: list, levels: int, wavelet: str) -> dict:
         signals_dict[l]["coeffs"] = smooth_coeffs
         # Reconstruct the signal using only the approximation coefficients
         reconst = pywt.waverec(smooth_coeffs, wavelet)
-        signals_dict[l]["signal"] = trim_signal(reconst)
+        signals_dict[l]["signal"] = trim_signal(y, reconst)
 
     return signals_dict
 
@@ -72,15 +89,7 @@ if __name__ == "__main__":
 
     ## Define the wavelet type
     WAVELET = "db4"
-    w = pywt.Wavelet(WAVELET)
-
-    ## Choose the maximum decomposition level
-    levels = pywt.dwt_max_level(data_len=len(y), filter_len=w.dec_len)
-    print(f"Max decomposition level of {levels} for time series length of {len(y)}")
-
-    coeffs = pywt.wavedec(y, WAVELET, level=levels)
-
-    smooth_signals = smooth_signal(coeffs, levels, WAVELET)
+    smooth_signals = smooth_signal(y, WAVELET)
 
     ## Input name of time series
     print("Enter name of time series (to be included in plot)")
