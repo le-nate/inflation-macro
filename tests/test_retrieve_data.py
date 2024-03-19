@@ -1,13 +1,26 @@
 """Test data retrieval functions"""
-# from analysis.api.creds import *
-from analysis import retrieve_data
 
+# %%
+# from analysis.api.creds import *
+from analysis import retrieve_data as rd
+
+# %%
 print("Testing get_fed_data, cleaned data, with 1-year expected inflation (EXPINF1YR)")
-data = retrieve_data.get_fed_data("EXPINF1YR", freq="m")
+data = rd.get_fed_data("EXPINF1YR", freq="m")
 assert isinstance(data, list)
 
-print(
-    "Testing get_fed_data, no cleaned data, with 1-year expected inflation (EXPINF1YR)"
-)
-data = retrieve_data.get_fed_data("EXPINF1YR", clean_data=False)
+# %%
+print("Testing get_fed_data, no headers, with 1-year expected inflation (EXPINF1YR)")
+data = rd.get_fed_data("EXPINF1YR", no_headers=False)
 assert isinstance(data, dict)
+
+# %%
+# TODO: Tests INSEE functions
+
+# %%
+print("Testing get_bdf_data, with series_key and dataset")
+data = rd.get_bdf_data("ICP.M.FR.N.000000.4.ANR")
+assert isinstance(data, list)
+
+
+print("Data retrieval functions testing complete.")
