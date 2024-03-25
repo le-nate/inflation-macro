@@ -5,61 +5,50 @@ Smoothing of signals via wavelet reconstruction
 # %%
 import numpy as np
 import matplotlib.pyplot as plt
-import pywt
 
 from simulation_consumption import consumption
+import wavelet_smoothing
 
-# %%
-# Generate values for i
-i_values = np.linspace(1, 512, 1000)
+if __name__ == "__main__":
 
-# Calculate consumption values
-consumption_values = consumption(i_values)
+    ## Matplotlib Settings
+    SMALL_SIZE = 8
+    MEDIUM_SIZE = 10
+    BIGGER_SIZE = 12
+    plt.rc("font", size=BIGGER_SIZE)  # controls default text sizes
+    plt.rc("axes", titlesize=BIGGER_SIZE)  # fontsize of the axes title
+    plt.rc("axes", labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+    plt.rc("xtick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
+    plt.rc("ytick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
+    plt.rc("legend", fontsize=SMALL_SIZE)  # legend fontsize
+    plt.rc("figure", titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
-# %%
-# Perform wavelet decomposition
-WAVELET = "sym12"  ## Wavelet type, Symmlet 12
-w = pywt.Wavelet(WAVELET)
+    i_values = np.linspace(1, 512, 1000)
+    raw_data = consumption(i_values)
+    t, y = i_values, raw_data
 
-## Choose the maximum decomposition level
-levels = pywt.dwt_max_level(data_len=len(consumption_values), filter_len=w.dec_len)
-print("Max decomposition level:", levels)
+    ## Define the wavelet type
+    WAVELET = "sym12"
+    smooth_signals = wavelet_smoothing.smooth_signal(y, WAVELET)
 
-coeffs = pywt.wavedec(consumption_values, WAVELET, level=levels)
+    ## Input name of time series
+    print("Enter name of time series (to be included in plot)")
+    name = input()
 
-# %%
-# ## Create dict for reconstructed signals
-smooth_signals = {}
+    fig = plt.figure(figsize=(10, 10))
+    ## Loop through levels and add detail level components
+    for i, (level, signal) in enumerate(smooth_signals.items(), 1):
+        ## Subplot for each smooth signal
+        plt.subplot(len(smooth_signals), 1, i)
+        plt.plot(t, y, label=name.title())
+        plt.plot(t, signal["signal"])
+        plt.xlabel("Year")
+        plt.grid()
+        plt.title(rf"Approximation: $S_{{j-{level}}}$")
+        plt.legend()
 
-## Loop through levels and add detail level components
-for l in range(levels):
-    smooth_coeffs = coeffs.copy()
-    smooth_signals[l] = {}
-    ## Set remaining detail coefficients to zero
-    for i in range(1, len(smooth_coeffs) - l):
-        smooth_coeffs[i] = np.zeros_like(smooth_coeffs[i])
-    smooth_signals[l]["coeffs"] = smooth_coeffs
-    # Reconstruct the signal using only the approximation coefficients
-    smooth_signals[l]["signal"] = pywt.waverec(smooth_coeffs, WAVELET)
-
-# %%
-plt.figure(figsize=(10, 6))
-## Loop through levels and add detail level components
-for i, (level, signal) in enumerate(smooth_signals.items(), 1):
-    plt.subplot(len(smooth_signals), 1, i)  # Create a subplot for each smooth signal
-    plt.plot(consumption_values, label="Original Signal")
-    plt.plot(signal["signal"])
-    plt.xlabel("Index")
-    plt.ylabel("Value")
-    plt.title(rf"Smooth Signal $S_{{j-{level}}}$")
-    plt.legend()
-
-
-plt.tight_layout()  # Adjust layout to prevent overlapping subplots
-plt.xlabel("Index")
-plt.ylabel("Value")
-plt.title("Original Signal and Smooth Components")
-plt.legend()
-plt.show()
-
-# %%
+    plt.xlabel("Year")
+    plt.ylabel(f"{name.capitalize()}")
+    fig.suptitle(f"Wavelet smoothing of {name.lower()}")
+    fig.tight_layout()
+    plt.show()
