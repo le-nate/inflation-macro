@@ -15,7 +15,8 @@ def trim_signal(original_signal: list, reconstructed: list) -> list:
     ## signal, so we remove a value from the approximated signal
     if len(original_signal) % 2 != 0:
         print(
-            f"Odd number of observations dectected (Length: {len(original_signal)}). Trim data? (y/n)"
+            f"""Odd number of observations dectected (Length: {len(original_signal)}).
+             Trim data? (y/n)"""
         )
         trim = input()
     else:
@@ -70,26 +71,26 @@ def smooth_signal(signal: list, wavelet: str) -> dict:
     return signals_dict
 
 
-if __name__ == "__main__":
-
+def main() -> None:
+    """Run script"""
     ## Matplotlib Settings
-    SMALL_SIZE = 8
-    MEDIUM_SIZE = 10
-    BIGGER_SIZE = 12
-    plt.rc("font", size=BIGGER_SIZE)  # controls default text sizes
-    plt.rc("axes", titlesize=BIGGER_SIZE)  # fontsize of the axes title
-    plt.rc("axes", labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
-    plt.rc("xtick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
-    plt.rc("ytick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
-    plt.rc("legend", fontsize=SMALL_SIZE)  # legend fontsize
-    plt.rc("figure", titlesize=BIGGER_SIZE)  # fontsize of the figure title
+    small_size = 8
+    medium_size = 10
+    bigger_size = 12
+    plt.rc("font", size=bigger_size)  # controls default text sizes
+    plt.rc("axes", titlesize=bigger_size)  # fontsize of the axes title
+    plt.rc("axes", labelsize=medium_size)  # fontsize of the x and y labels
+    plt.rc("xtick", labelsize=small_size)  # fontsize of the tick labels
+    plt.rc("ytick", labelsize=small_size)  # fontsize of the tick labels
+    plt.rc("legend", fontsize=small_size)  # legend fontsize
+    plt.rc("figure", titlesize=bigger_size)  # fontsize of the figure title
 
     raw_data = rd.get_insee_data("000857179")
     t, y = rd.clean_insee_data(raw_data)
 
     ## Define the wavelet type
-    WAVELET = "db4"
-    smooth_signals = smooth_signal(y, WAVELET)
+    wavelet_type = "db4"
+    smooth_signals = smooth_signal(y, wavelet_type)
 
     ## Input name of time series
     print("Enter name of time series (to be included in plot)")
@@ -112,3 +113,7 @@ if __name__ == "__main__":
     fig.suptitle(f"Wavelet smoothing of {name.lower()}")
     fig.tight_layout()
     plt.show()
+
+
+if __name__ == "__main__":
+    main()
