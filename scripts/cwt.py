@@ -11,7 +11,7 @@ import pywt
 
 from analysis import retrieve_data as rd
 
-WAVELET_WIDTH = np.arange(1, 7)  # np.geomspace(1, 16, num=4)
+WAVELET_WIDTH = np.arange(1, 64)  # np.geomspace(1, 16, num=4)
 WAVELET = "morl"
 
 
@@ -29,29 +29,31 @@ def run_cwt(
 def main() -> None:
     """Run script"""
     ## Get data
-    raw_data = rd.get_fed_data("CPIAUCSL", units="pc1", freq="m")
-    t, y = rd.clean_fed_data(raw_data)
+    raw_data = rd.get_insee_data("000857180")
+    t, y = rd.clean_insee_data(raw_data)
     cwt_result, frequencies = run_cwt(y, WAVELET_WIDTH, WAVELET)
 
-    print(t)
-    print(cwt_result)
-
     # Create subplots
-    # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=False)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=False)
 
     # Plot the CWT result
-    fig, axs = plt.subplots(2, 1, sharex=True)
-    extent = [min(t), max(t), 1, 8]
-    pcm = axs[0].pcolormesh(t, frequencies, cwt_result)
-    axs[0].set_ylabel("Scale")
-    axs[0].set_title("Continuous Wavelet Transform")
-    fig.colorbar(pcm, ax=axs[0])
+    extent = [t[0], t[-1], min(WAVELET_WIDTH), max(WAVELET_WIDTH)]
+    ax1.imshow(
+        np.abs(cwt_result),
+        extent=extent,
+        cmap="jet",
+        aspect="auto",
+        vmax=np.abs(cwt_result).max(),
+        vmin=0,
+    )
+    ax1.set_ylabel("Scale")
+    ax1.set_title("Continuous Wavelet Transform")
 
     # Plot the time series data
-    axs[1].plot(t, y, color="blue")
-    axs[1].set_xlabel("Time")
-    axs[1].set_ylabel("Amplitude")
-    axs[1].set_title("Time Series")
+    ax2.plot(t, y, color="blue")
+    ax2.set_xlabel("Time")
+    ax2.set_ylabel("Amplitude")
+    ax2.set_title("Time Series")
 
     # # Add cone of influence (COI)
     # # The COI typically represents the regions where edge effects become significant
