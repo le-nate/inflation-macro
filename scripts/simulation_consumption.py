@@ -48,11 +48,8 @@ def consumption(i, exp_const=0.9, sin_const=0.6):
     return exp_const * y_exp(i) + sin_const * y_sin(i) + error_function(i)
 
 
-if __name__ == "__main__":
-    # Example usage:
-    x_values = np.linspace(0, 2 * np.pi, 1000)
-    error_terms = error_function(x_values)
-
+def main() -> None:
+    """Run script"""
     # Generate values for i
     i_values = np.linspace(1, 512, 1000)
 
@@ -77,3 +74,7 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid(True)
     plt.show()
+
+
+if __name__ == "__main__":
+    main()
