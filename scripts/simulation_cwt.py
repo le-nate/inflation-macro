@@ -4,19 +4,19 @@ Continuous wavelet transform of simulated signal
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import cwt, morlet
+import pywt
 
 from simulation_consumption import consumption
 
 WAVELET_WIDTH = np.arange(1, 31)
-WAVELET = morlet
+WAVELET = "morl"
 
 
 def main() -> None:
     """Run script"""
     i_values = np.linspace(1, 512, 512)
     consumption_values = consumption(i_values)
-    cwt_result = cwt(consumption_values, WAVELET, WAVELET_WIDTH)
+    cwt_result, freqs = pywt.cwt(consumption_values, WAVELET_WIDTH, WAVELET)
 
     # Plot the CWT result
     plt.figure(figsize=(10, 6))
