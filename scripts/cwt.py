@@ -7,6 +7,7 @@ from typing import Callable
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import pywt
 
 from analysis import retrieve_data as rd
@@ -29,15 +30,16 @@ def run_cwt(
 def main() -> None:
     """Run script"""
     ## Get data
-    raw_data = rd.get_insee_data("000857180")
-    t, y = rd.clean_insee_data(raw_data)
-    cwt_result, frequencies = run_cwt(y, WAVELET_WIDTH, WAVELET)
+    raw_data = rd.get_fed_data("PCE", units="pc1")
+    t, y = rd.clean_fed_data(raw_data)
+    cwt_result, freqs = pywt.cwt(y, WAVELET_WIDTH, WAVELET)
+    t_num = mdates.date2num(t)
 
     # Create subplots
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=False)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 
     # Plot the CWT result
-    extent = [t[0], t[-1], min(WAVELET_WIDTH), max(WAVELET_WIDTH)]
+    extent = [min(t_num), max(t_num), min(WAVELET_WIDTH), max(WAVELET_WIDTH)]
     ax1.imshow(
         np.abs(cwt_result),
         extent=extent,
@@ -55,10 +57,7 @@ def main() -> None:
     ax2.set_ylabel("Amplitude")
     ax2.set_title("Time Series")
 
-    # # Add cone of influence (COI)
-    # # The COI typically represents the regions where edge effects become significant
-    # # You can customize the COI shading as desired
-    # plt.fill_between([-1, 1], 1, 31, color="black")
+    # TODO Add cone of influence (COI)
 
     plt.show()
 
