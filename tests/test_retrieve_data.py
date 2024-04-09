@@ -1,7 +1,7 @@
 """Test data retrieval functions"""
 
 # %%
-# from analysis.api.creds import *
+import numpy as np
 from analysis import retrieve_data as rd
 
 # %%
@@ -13,6 +13,11 @@ assert isinstance(data, list)
 print("Testing get_fed_data, no headers, with 1-year expected inflation (EXPINF1YR)")
 data = rd.get_fed_data("EXPINF1YR", no_headers=False)
 assert isinstance(data, dict)
+# %%
+print("Testing get_fed_data, cleaned data, with 1-year expected inflation (EXPINF1YR)")
+data = rd.get_fed_data("EXPINF1YR", freq="m")
+clean_t, clean_y = rd.clean_fed_data(data)
+assert isinstance(clean_t[1], np.datetime64)
 
 # %%
 print("Testing get_insee_data")
@@ -21,8 +26,8 @@ assert isinstance(data, list)
 
 print("Testing clean_insee_data")
 clean_t, clean_y = rd.clean_insee_data(data)
-assert isinstance(clean_y, list)
-assert isinstance(clean_t, list)
+assert isinstance(clean_y, np.ndarray)
+assert isinstance(clean_t, np.ndarray)
 
 
 # %%
@@ -32,7 +37,7 @@ assert isinstance(data, list)
 
 print("Testing clean_bdf_data")
 clean_t, clean_y = rd.clean_bdf_data(data)
-assert isinstance(clean_y, list)
-assert isinstance(clean_t, list)
+assert isinstance(clean_y, np.ndarray)
+assert isinstance(clean_t, np.ndarray)
 
 print("Data retrieval functions testing complete.")

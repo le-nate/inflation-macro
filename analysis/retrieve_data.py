@@ -3,6 +3,7 @@
 from dotenv import load_dotenv
 import json
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import os
 import requests
@@ -15,7 +16,7 @@ FED_KEY = os.getenv("FED_KEY")
 INSEE_AUTH = os.getenv("INSEE_AUTH")
 
 
-def get_fed_data(series, no_headers=True, **kwargs):
+def get_fed_data(series: str, no_headers: bool = True, **kwargs) -> str:
     """Retrieve data series from FRED database and convert to time series if desired
     :param str: series Fed indicator's code (e.g. EXPINF1YR, for 1-year expected inflation)
     :param bool: no_headers Remove headers in json
@@ -65,11 +66,11 @@ def get_fed_data(series, no_headers=True, **kwargs):
         return None
 
 
-def clean_fed_data(data) -> tuple[list, list]:
+def clean_fed_data(json_data: str) -> tuple[npt.NDArray, npt.NDArray]:
     """Convert Fed data to time and endogenous variables (t, y)"""
 
     ## Convert to dataframe
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(json_data)
     print(df.info(verbose=True), "\n")
 
     ## Convert dtypes
@@ -77,14 +78,15 @@ def clean_fed_data(data) -> tuple[list, list]:
     df.dropna(inplace=True)
     df["value"] = pd.to_numeric(df["value"])
     df["date"] = pd.to_datetime(df["date"])
+    # df["date"] = np.datetime64(df["date"])
 
     ## Drop extra columns
     df = df[["date", "value"]]
     print(df.dtypes)
     print(df.describe(), "\n")
 
-    t = df["date"].to_list()
-    y = df["value"].to_list()
+    t = df["date"].to_numpy()
+    y = df["value"].to_numpy()
 
     return t, y
 
@@ -130,8 +132,8 @@ def clean_insee_data(data: list) -> tuple[list, list]:
     df["@TIME_PERIOD"] = pd.to_datetime(df["@TIME_PERIOD"])
     df["@OBS_VALUE"] = df["@OBS_VALUE"].astype(float)
 
-    t = df["@TIME_PERIOD"].to_list()
-    y = df["@OBS_VALUE"].to_list()
+    t = df["@TIME_PERIOD"].to_numpy()
+    y = df["@OBS_VALUE"].to_numpy()
 
     return t, y
 
@@ -187,8 +189,8 @@ def clean_bdf_data(data: list) -> tuple[list, list]:
     df = pd.DataFrame(dict_obs)
     data = data_to_time_series(df, "periodFirstDate")
     data
-    t = df["periodFirstDate"].to_list()
-    y = df["value"].to_list()
+    t = df["periodFirstDate"].to_numpy()
+    y = df["value"].to_numpy()
 
     return t, y
 
