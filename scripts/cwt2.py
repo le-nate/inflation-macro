@@ -96,8 +96,8 @@ scale_avg_signif, tmp = wavelet.significance(
 
 # * Plot results
 plt.close("all")
-plt.ioff()
-figprops = dict(figsize=(11, 8), dpi=72)
+# plt.ioff()
+figprops = {"figsize": (11, 8), "dpi": 72}
 fig = plt.figure(**figprops)
 
 # 1) original series anomaly and the inverse wavelet transform
