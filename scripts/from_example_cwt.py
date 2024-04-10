@@ -1,16 +1,13 @@
 """
-In this example we will load the NINO3 sea surface temperature anomaly dataset
-between 1871 and 1996. This and other sample data files are kindly provided by
-C. Torrence and G. Compo at
-<http://paos.colorado.edu/research/wavelets/software.html>.
-
+Continuous wavelet transform of signals
+based off: https://pycwt.readthedocs.io/en/latest/tutorial.html
 """
 
 # We begin by importing the relevant libraries. Please make sure that PyCWT is
 # properly installed in your system.
 from __future__ import division
-import numpy
-from matplotlib import pyplot
+import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 import pycwt as wavelet
@@ -18,35 +15,42 @@ from pycwt.helpers import find
 
 from analysis import retrieve_data as rd
 
-# Then, we load the dataset and define some data related parameters. In this
-# case, the first 19 lines of the data file contain meta-data, that we ignore,
-# since we set them manually (*i.e.* title, units).
-measure = "000857180"
-raw_data = rd.get_insee_data(measure)
-t_date, dat = rd.clean_insee_data(raw_data)
-t = mdates.date2num(t_date)
-title = measure
-label = "NINO3 SST"
-units = "degC"
+## Load dataset
+MEASURE = "CPIAUCSL"
+raw_data = rd.get_fed_data(MEASURE, units="pc1", freq="m")
+t_date, dat = rd.clean_fed_data(raw_data)
+t = np.arange(1, len(dat))
+
+## Reverse order of observations since come in descending order (most recent first)
+# dat = np.flip(dat)
+
+# * Define starting time and time step
 t0 = min(t)
+print(t)
 dt = 1 / 12  # In years
+
+## Define title and labels for plots
+TITLE = MEASURE
+LABEL = "NINO3 SST"
+UNITS = "degC"
 
 # We also create a time array in years.
 N = dat.size
-t = numpy.arange(0, N) * dt + t0
+t = np.arange(0, N) * dt + t0
 
-# We write the following code to detrend and normalize the input data by its
-# standard deviation. Sometimes detrending is not necessary and simply
-# removing the mean value is good enough. However, if your dataset has a well
-# defined trend, such as the Mauna Loa CO\ :sub:`2` dataset available in the
-# above mentioned website, it is strongly advised to perform detrending.
-# Here, we fit a one-degree polynomial function and then subtract it from the
-# original data.
-p = numpy.polyfit(t - t0, dat, 1)
-dat_notrend = dat - numpy.polyval(p, t - t0)
-std = dat_notrend.std()  # Standard deviation
+# TODO check normalization approach
+# # We write the following code to detrend and normalize the input data by its
+# # standard deviation. Sometimes detrending is not necessary and simply
+# # removing the mean value is good enough. However, if your dataset has a well
+# # defined trend, such as the Mauna Loa CO\ :sub:`2` dataset available in the
+# # above mentioned website, it is strongly advised to perform detrending.
+# # Here, we fit a one-degree polynomial function and then subtract it from the
+# # original data.
+# p = np.polyfit(t - t0, dat, 1)
+# dat_notrend = dat - np.polyval(p, t - t0)
+std = dat.std()  #! dat_notrend.std()  # Standard deviation
 var = std**2  # Variance
-dat_norm = dat_notrend / std  # Normalized dataset
+dat_norm = dat / std  #! dat_notrend / std  # Normalized dataset
 
 # The next step is to define some parameters of our wavelet analysis. We
 # select the mother wavelet, in this case the Morlet wavelet with
@@ -66,8 +70,8 @@ iwave = wavelet.icwt(wave, scales, dt, dj, mother) * std
 
 # We calculate the normalized wavelet and Fourier power spectra, as well as
 # the Fourier equivalent periods for each wavelet scale.
-power = (numpy.abs(wave)) ** 2
-fft_power = numpy.abs(fft) ** 2
+power = (np.abs(wave)) ** 2
+fft_power = np.abs(fft) ** 2
 period = 1 / freqs
 
 # We could stop at this point and plot our results. However we are also
@@ -76,7 +80,7 @@ period = 1 / freqs
 signif, fft_theor = wavelet.significance(
     1.0, dt, scales, 0, alpha, significance_level=0.95, wavelet=mother
 )
-sig95 = numpy.ones([1, N]) * signif[:, None]
+sig95 = np.ones([1, N]) * signif[:, None]
 sig95 = power / sig95
 
 # Then, we calculate the global wavelet spectrum and determine its
@@ -91,7 +95,7 @@ glbl_signif, tmp = wavelet.significance(
 # significance level.
 sel = find((period >= 2) & (period < 8))
 Cdelta = mother.cdelta
-scale_avg = (scales * numpy.ones((N, 1))).transpose()
+scale_avg = (scales * np.ones((N, 1))).transpose()
 scale_avg = power / scale_avg  # As in Torrence and Compo (1998) equation 24
 scale_avg = var * dj * dt / Cdelta * scale_avg[sel, :].sum(axis=0)
 scale_avg_signif, tmp = wavelet.significance(
@@ -112,44 +116,42 @@ scale_avg_signif, tmp = wavelet.significance(
 # levels are either included as dotted lines or as filled contour lines.
 
 # Prepare the figure
-pyplot.close("all")
-pyplot.ioff()
+plt.close("all")
+plt.ioff()
 figprops = dict(figsize=(11, 8), dpi=72)
-fig = pyplot.figure(**figprops)
+fig = plt.figure(**figprops)
 
 # First sub-plot, the original time series anomaly and inverse wavelet
 # transform.
-ax = pyplot.axes([0.1, 0.75, 0.65, 0.2])
+ax = plt.axes([0.1, 0.75, 0.65, 0.2])
 ax.plot(t, iwave, "-", linewidth=1, color=[0.5, 0.5, 0.5])
 ax.plot(t, dat, "k", linewidth=1.5)
-ax.set_title("a) {}".format(title))
-ax.set_ylabel(r"{} [{}]".format(label, units))
+ax.set_title("a) {}".format(TITLE))
+ax.set_ylabel(r"{} [{}]".format(LABEL, UNITS))
 
 # Second sub-plot, the normalized wavelet power spectrum and significance
 # level contour lines and cone of influece hatched area. Note that period
 # scale is logarithmic.
-bx = pyplot.axes([0.1, 0.37, 0.65, 0.28], sharex=ax)
+bx = plt.axes([0.1, 0.37, 0.65, 0.28], sharex=ax)
 levels = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
 bx.contourf(
     t,
-    numpy.log2(period),
-    numpy.log2(power),
-    numpy.log2(levels),
+    np.log2(period),
+    np.log2(power),
+    np.log2(levels),
     extend="both",
-    cmap=pyplot.cm.viridis,
+    cmap=plt.cm.viridis,
 )
 extent = [t.min(), t.max(), 0, max(period)]
-bx.contour(
-    t, numpy.log2(period), sig95, [-99, 1], colors="k", linewidths=2, extent=extent
-)
+bx.contour(t, np.log2(period), sig95, [-99, 1], colors="k", linewidths=2, extent=extent)
 bx.fill(
-    numpy.concatenate([t, t[-1:] + dt, t[-1:] + dt, t[:1] - dt, t[:1] - dt]),
-    numpy.concatenate(
+    np.concatenate([t, t[-1:] + dt, t[-1:] + dt, t[:1] - dt, t[:1] - dt]),
+    np.concatenate(
         [
-            numpy.log2(coi),
+            np.log2(coi),
             [1e-9],
-            numpy.log2(period[-1:]),
-            numpy.log2(period[-1:]),
+            np.log2(period[-1:]),
+            np.log2(period[-1:]),
             [1e-9],
         ]
     ),
@@ -157,39 +159,35 @@ bx.fill(
     alpha=0.3,
     hatch="x",
 )
-bx.set_title("b) {} Wavelet Power Spectrum ({})".format(label, mother.name))
+bx.set_title("b) {} Wavelet Power Spectrum ({})".format(LABEL, mother.name))
 bx.set_ylabel("Period (years)")
 #
-Yticks = 2 ** numpy.arange(
-    numpy.ceil(numpy.log2(period.min())), numpy.ceil(numpy.log2(period.max()))
-)
-bx.set_yticks(numpy.log2(Yticks))
+Yticks = 2 ** np.arange(np.ceil(np.log2(period.min())), np.ceil(np.log2(period.max())))
+bx.set_yticks(np.log2(Yticks))
 bx.set_yticklabels(Yticks)
 
 # Third sub-plot, the global wavelet and Fourier power spectra and theoretical
 # noise spectra. Note that period scale is logarithmic.
-cx = pyplot.axes([0.77, 0.37, 0.2, 0.28], sharey=bx)
-cx.plot(glbl_signif, numpy.log2(period), "k--")
-cx.plot(var * fft_theor, numpy.log2(period), "--", color="#cccccc")
-cx.plot(
-    var * fft_power, numpy.log2(1.0 / fftfreqs), "-", color="#cccccc", linewidth=1.0
-)
-cx.plot(var * glbl_power, numpy.log2(period), "k-", linewidth=1.5)
+cx = plt.axes([0.77, 0.37, 0.2, 0.28], sharey=bx)
+cx.plot(glbl_signif, np.log2(period), "k--")
+cx.plot(var * fft_theor, np.log2(period), "--", color="#cccccc")
+cx.plot(var * fft_power, np.log2(1.0 / fftfreqs), "-", color="#cccccc", linewidth=1.0)
+cx.plot(var * glbl_power, np.log2(period), "k-", linewidth=1.5)
 cx.set_title("c) Global Wavelet Spectrum")
-cx.set_xlabel(r"Power [({})^2]".format(units))
+cx.set_xlabel(r"Power [({})^2]".format(UNITS))
 cx.set_xlim([0, glbl_power.max() + var])
-cx.set_ylim(numpy.log2([period.min(), period.max()]))
-cx.set_yticks(numpy.log2(Yticks))
+cx.set_ylim(np.log2([period.min(), period.max()]))
+cx.set_yticks(np.log2(Yticks))
 cx.set_yticklabels(Yticks)
-pyplot.setp(cx.get_yticklabels(), visible=False)
+plt.setp(cx.get_yticklabels(), visible=False)
 
 # Fourth sub-plot, the scale averaged wavelet spectrum.
-dx = pyplot.axes([0.1, 0.07, 0.65, 0.2], sharex=ax)
+dx = plt.axes([0.1, 0.07, 0.65, 0.2], sharex=ax)
 dx.axhline(scale_avg_signif, color="k", linestyle="--", linewidth=1.0)
 dx.plot(t, scale_avg, "k-", linewidth=1.5)
 dx.set_title("d) {}--{} year scale-averaged power".format(2, 8))
 dx.set_xlabel("Time (year)")
-dx.set_ylabel(r"Average variance [{}]".format(units))
+dx.set_ylabel(r"Average variance [{}]".format(UNITS))
 ax.set_xlim([t.min(), t.max()])
 
-pyplot.show()
+plt.show()
