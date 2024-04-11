@@ -41,3 +41,8 @@ assert isinstance(clean_y, np.ndarray)
 assert isinstance(clean_t, np.ndarray)
 
 print("Data retrieval functions testing complete.")
+
+# %%
+print("Testing get_world_bank_data")
+data = rd.get_world_bank_data("FP.CPI.TOTL.ZG", "FR")
+print(data)
