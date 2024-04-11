@@ -38,33 +38,12 @@ def main() -> None:
         [np.log2(coi), [1e-9], np.log2(period[-1:]), np.log2(period[-1:]), [1e-9]]
     )
 
-    print(
-        coi.shape,
-        np.concatenate(
-            [
-                np.log2(coi),
-                [1e-9],
-                np.log2(period[-1:]),
-                np.log2(period[-1:]),
-                [1e-9],
-            ]
-        ).shape,
-        np.log2(period[-1:]),
-        np.log2(period[-1:]),
-        [1e-9],
-    )
-    print([t[-1:] + dt, t[-1:] + dt, t[:1] - dt, t[:1] - dt])
-    # print(coi)
-    # print(period)
-    # print(signif)
-
     # * Plot results
     # Create subplots
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 
     # Plot XWT
     extent = [min(t), max(t), min(coi_plot), max(period)]
-    print(min(coi_plot), max(period))
 
     # Plot the time series data
     ax2.set_title("b) Time series")
