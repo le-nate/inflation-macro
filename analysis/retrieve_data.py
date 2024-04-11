@@ -135,8 +135,9 @@ def clean_insee_data(
         df = df[::-1]
     else:
         pass
-    t = df["@TIME_PERIOD"].to_numpy()
-    y = df["@OBS_VALUE"].to_numpy()
+    df.rename(columns={"@TIME_PERIOD": "date", "@OBS_VALUE": "value"}, inplace=True)
+    t = df["date"].to_numpy()
+    y = df["value"].to_numpy()
 
     return df, t, y
 
@@ -204,8 +205,9 @@ def clean_bdf_data(
         df = df[::-1]
     else:
         pass
-    df["periodFirstDate"] = pd.to_datetime(df["periodFirstDate"])
-    t = df["periodFirstDate"].to_numpy()
+    df["periodFirstDate"] = pd.to_datetime(df["periodFirstDate"], dayfirst=True)
+    df.rename(columns={"periodFirstDate": "date"}, inplace=True)
+    t = df["date"].to_numpy()
     y = df["value"].to_numpy()
 
     return df, t, y
