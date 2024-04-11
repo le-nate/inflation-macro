@@ -1,5 +1,6 @@
 """Retrieve data for analysis via API from statistics agencies and central banks"""
 
+import dateparser
 from dotenv import load_dotenv
 import json
 import numpy as np
@@ -7,6 +8,7 @@ import numpy.typing as npt
 import pandas as pd
 import os
 import requests
+import wbgapi as wb
 import xmltodict
 
 ## Retrieve API credentials
@@ -66,7 +68,7 @@ def get_fed_data(series: str, no_headers: bool = True, **kwargs) -> str:
         return None
 
 
-def clean_fed_data(json_data: str) -> tuple[npt.NDArray, npt.NDArray]:
+def clean_fed_data(json_data: str) -> tuple[pd.DataFrame, npt.NDArray, npt.NDArray]:
     """Convert Fed data to time and endogenous variables (t, y)"""
 
     ## Convert to dataframe
@@ -78,24 +80,19 @@ def clean_fed_data(json_data: str) -> tuple[npt.NDArray, npt.NDArray]:
     df.dropna(inplace=True)
     df["value"] = pd.to_numeric(df["value"])
     df["date"] = pd.to_datetime(df["date"])
-    # df["date"] = np.datetime64(df["date"])
 
     ## Drop extra columns
     df = df[["date", "value"]]
-    print(df.dtypes)
-    print(df.describe(), "\n")
 
     t = df["date"].to_numpy()
     y = df["value"].to_numpy()
 
-    return t, y
+    return df, t, y
 
 
 def get_insee_data(series_id: str) -> list:
     """
     Retrieve data (Series_BDM) from INSEE API
-    :param str: series_id INSEE indicator's code (see suggestions below)
-    :param str: series_name Remove headers in json
 
     Some series codes:
     - 'Expected inflation' `"000857180"`,
@@ -122,23 +119,29 @@ def get_insee_data(series_id: str) -> list:
     return response_data
 
 
-def clean_insee_data(data: list) -> tuple[list, list]:
-    """
-    Convert INSEE data to time and endogenous variables (t, y)
-    :param str: series_name
-    """
+def clean_insee_data(
+    data: list, ascending: bool = True
+) -> tuple[pd.DataFrame, npt.NDArray, npt.NDArray]:
+    """Convert INSEE data to time and endogenous variables (t, y)"""
     df = pd.DataFrame(data)
     # Convert data types
     df["@TIME_PERIOD"] = pd.to_datetime(df["@TIME_PERIOD"])
     df["@OBS_VALUE"] = df["@OBS_VALUE"].astype(float)
-
+    if ascending is True and df["@TIME_PERIOD"].iloc[-1] < df["@TIME_PERIOD"].iloc[0]:
+        df = df[::-1]
+    elif (
+        ascending is False and df["@TIME_PERIOD"].iloc[-1] > df["@TIME_PERIOD"].iloc[0]
+    ):
+        df = df[::-1]
+    else:
+        pass
     t = df["@TIME_PERIOD"].to_numpy()
     y = df["@OBS_VALUE"].to_numpy()
 
-    return t, y
+    return df, t, y
 
 
-def get_bdf_data(series_key: str, dataset: str = "ICP", **kwargs) -> json:
+def get_bdf_data(series_key: str, dataset: str = "ICP", **kwargs) -> str:
     """Retrieve data from Banque de France API
     Measured inflation: `'ICP.M.FR.N.000000.4.ANR'`
     """
@@ -171,7 +174,9 @@ def get_bdf_data(series_key: str, dataset: str = "ICP", **kwargs) -> json:
     return response
 
 
-def clean_bdf_data(data: list) -> tuple[list, list]:
+def clean_bdf_data(
+    data: list, ascending: bool = True
+) -> tuple[pd.DataFrame, npt.NDArray, npt.NDArray]:
     """Convert list of dicts data from Banque de France to lists for t and y"""
     ## Dictionary of observations
     dict_obs = {
@@ -187,12 +192,36 @@ def clean_bdf_data(data: list) -> tuple[list, list]:
 
     ## Convert to df
     df = pd.DataFrame(dict_obs)
-    data = data_to_time_series(df, "periodFirstDate")
-    data
+    if (
+        ascending is True
+        and df["periodFirstDate"].iloc[-1] < df["periodFirstDate"].iloc[0]
+    ):
+        df = df[::-1]
+    elif (
+        ascending is False
+        and df["periodFirstDate"].iloc[-1] > df["periodFirstDate"].iloc[0]
+    ):
+        df = df[::-1]
+    else:
+        pass
+    df["periodFirstDate"] = pd.to_datetime(df["periodFirstDate"])
     t = df["periodFirstDate"].to_numpy()
     y = df["value"].to_numpy()
 
-    return t, y
+    return df, t, y
+
+
+def get_world_bank_data(series_id: str, country: str) -> str:
+    """Retrieve inflation data by country
+    Inflation rate (annual %): 'FP.CPI.TOTL.ZG'
+    CPI (2010 = 100): 'FP.CPI.TOTL'
+    France: 'FR'
+    United States: 'US'
+    """
+    base_url = f"https://api.worldbank.org/v2/indicator/{series_id}?locations={country}?format=json"
+    response = requests.get(base_url, timeout=5)
+    print(response)
+    return response.json()
 
 
 def data_to_time_series(df, index_column, measure=None):
