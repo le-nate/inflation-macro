@@ -17,8 +17,8 @@ from analysis import retrieve_data as rd
 
 # * Load dataset
 MEASURE = "CPIAUCSL"
-raw_data = rd.get_fed_data(MEASURE, units="pc1", freq="m")
-t_date, dat = rd.clean_fed_data(raw_data)
+raw_data = rd.get_fed_data(MEASURE, units="pc1", freqs="m")
+_, t_date, dat = rd.clean_fed_data(raw_data)
 t = np.arange(1, len(dat))
 
 # * Define starting time and time step
