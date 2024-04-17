@@ -20,10 +20,8 @@ INSEE_AUTH = os.getenv("INSEE_AUTH")
 
 def get_fed_data(series: str, no_headers: bool = True, **kwargs) -> str:
     """Retrieve data series from FRED database and convert to time series if desired
-    :param str: series Fed indicator's code (e.g. EXPINF1YR, for 1-year expected inflation)
-    :param bool: no_headers Remove headers in json
-
     Some series codes:
+    - French CPI (`"FRACPIALLMINMEI", units="pc1", freq="m"`)
     - Michigan Perceived Inflation (`"MICH"`)
     - 1-Year Expected Inflation (`"EXPINF1YR"`)
     - US CPI (`"CPIAUCSL", units="pc1", freq="m"`)
