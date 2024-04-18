@@ -86,7 +86,7 @@ def main() -> None:
     plt.rc("figure", titlesize=bigger_size)  # fontsize of the figure title
 
     raw_data = rd.get_insee_data("000857179")
-    t, y = rd.clean_insee_data(raw_data)
+    _, t, y = rd.clean_insee_data(raw_data)
 
     ## Define the wavelet type
     wavelet_type = "db4"
