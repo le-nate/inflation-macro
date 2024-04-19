@@ -69,7 +69,7 @@ def smooth_signal(
     ## Loop through levels and remove detail level component(s)
     # ! Note: signal_dict[l] provides the signal with levels <= l removed
     for l in range(dwt_levels, 0, -1):
-        print(f"s_{l}")
+        print(f"s_{l} stored with key {l}")
         smooth_coeffs = coeffs.copy()
         signals_dict[l] = {}
         ## Set remaining detail coefficients to zero
@@ -84,12 +84,21 @@ def smooth_signal(
 
 
 def plot_smoothing(
-    smooth_signals: dict, x: npt.NDArray, y: npt.NDArray, name: str, **kwargs
+    smooth_signals: dict,
+    x: npt.NDArray,
+    y: npt.NDArray,
+    name: str,
+    ascending: bool = False,
+    **kwargs,
 ) -> matplotlib.figure.Figure:
     """Graph series of smoothed signals with original signal"""
     fig = plt.figure()
     # * Loop through levels and add detail level components
-    for i, (level, signal) in enumerate(smooth_signals.items(), 1):
+    if ascending:
+        order = reversed(list(smooth_signals.items()))
+    else:
+        order = list(smooth_signals.items())
+    for i, (level, signal) in enumerate(order, 1):
         smooth_level = len(smooth_signals) - level
         ## Subplot for each smooth signal
         plt.subplot(len(smooth_signals), 1, i)
