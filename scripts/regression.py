@@ -2,6 +2,7 @@
 
 # %%
 import matplotlib.pyplot as plt
+import matplotlib.figure
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -17,38 +18,38 @@ def simple_regression(
     data: pd.DataFrame, x_var: str, y_var: str, add_constant: bool = True
 ):
     """Perform simple linear regression on data"""
-    x = data[x_var]
-    y = data[y_var]
+    x_simp = data[x_var]
+    y_simp = data[y_var]
     if add_constant:
-        x = sm.add_constant(x)
-    model = sm.OLS(y, x)
+        x_simp = sm.add_constant(x_simp)
+    model = sm.OLS(y_simp, x_simp)
     results = model.fit()
     return results
 
 
-def time_scale_regression(
-    smooth_x: dict,
-    smooth_y: dict,
+def wavelet_approximation(
+    smooth_x_dict: dict,
+    original_y: npt.NDArray,
     levels: int,
     add_constant: bool = True,
+    verbose: bool = False,
 ) -> dict:
     """Regresses smooth components"""
     regressions_dict = {}
     crystals = list(range(1, levels + 1))
     for c in crystals:
         regressions_dict[c] = {}
-        x_c = smooth_x[c]["signal"]
-        y_c = smooth_y[c]["signal"]
+        x_c = smooth_x_dict[c]["signal"]
         if add_constant:
             x_c = sm.add_constant(x_c)
-        model = sm.OLS(y_c, x_c)
-        results_smooth = model.fit()
-        print("\n\n")
-        print(f"-----Smoothed model, X1a_er - D_{list(range(1, c+1))}-----")
-        print("\n")
-        print(results_smooth.summary())
-        regressions_dict[c]["y_c"] = y_c
-        regressions_dict[c]["results"] = results_smooth
+        model = sm.OLS(original_y, x_c)
+        results = model.fit()
+        if verbose:
+            print("\n\n")
+            print(f"-----Smoothed model, Removing D_{list(range(1, c+1))}-----")
+            print("\n")
+            print(results.summary())
+        regressions_dict[c]["results"] = results
     return regressions_dict
 
 
@@ -111,10 +112,6 @@ sns.pairplot(df, corner=True, kind="reg", plot_kws={"ci": None})
 results_nondur = simple_regression(df, "expectation", "nondurable")
 results_nondur.summary()
 
-# %%
-# * Plot series
-plot_fit(results_nondur, exog_idx="expectation")
-
 # %% [markdown]
 # ### Wavelet approximation
 
@@ -124,7 +121,6 @@ t = df["date"].to_numpy()
 x = df["expectation"].to_numpy()
 smooth_x, dwt_levels = dwt.smooth_signal(x, mother)
 y = df["nondurable"].to_numpy()
-smooth_y, _ = dwt.smooth_signal(x, mother, dwt_levels)
 
 # %%
 # * Plot smoothing
@@ -133,15 +129,21 @@ plt.xlabel("Date")
 fig1.suptitle(f"Wavelet smoothing of Expectations (J={dwt_levels})")
 fig1.tight_layout()
 
-fig2 = dwt.plot_smoothing(smooth_y, t, y, name="Expectations", figsize=(10, 10))
-plt.xlabel("Date")
-fig2.suptitle(f"Wavelet smoothing of Nondurables consumption (J={dwt_levels})")
-fig2.tight_layout()
+# %%
+approximations = wavelet_approximation(
+    smooth_x_dict=smooth_x, original_y=y, levels=dwt_levels
+)
 
 # %%
-regressions = time_scale_regression(
-    smooth_x=smooth_x, smooth_y=smooth_y, levels=dwt_levels
-)
+# * Remove D_1 and D_2
+apprx = approximations[2]["results"]
+
+# %%
+# * Plot series
+fig, ax = plt.subplots(2, 1, figsize=(10, 10))
+
+plot_fit(results_nondur, exog_idx="expectation", ax=ax[0])
+plot_fit(apprx, exog_idx=1, ax=ax[1])
 
 # %% [markdown]
 # ### Durables consumption
