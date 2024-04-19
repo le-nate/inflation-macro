@@ -22,11 +22,17 @@ def get_fed_data(series: str, no_headers: bool = True, **kwargs) -> str:
     """Retrieve data series from FRED database and convert to time series if desired
     Some series codes:
     - French CPI (`"FRACPIALLMINMEI", units="pc1", freq="m"`)
-    - Michigan Perceived Inflation (`"MICH"`)
+    - Michigan Expected Inflation (`"MICH"`)
     - 1-Year Expected Inflation (`"EXPINF1YR"`)
     - US CPI (`"CPIAUCSL", units="pc1", freq="m"`)
     - Personal Savings Rate (`"PSAVERT"`)
     - Personal Consumption Expenditure (`"PCE", units="pc1"`)
+    - Personal Durables Consumption (`"PCEDG"`, units="pc1")
+    - Personal Non-durables Consumption (`"PCEND"`, units="pc1")
+    - Personal Consumption Expenditures, Not seasonal, Quarterly (`"NA000349Q"`)
+    - Real Personal Consumption Expenditures, Not seasonal, Quarterly (`"ND000349Q"`)
+    - Real Personal Consumption Expenditures: Durable Goods, Not seasonal, Quarterly (`"ND000346Q"`)
+    - Real Personal Consumption Expenditures: Nondurable Goods, Not seasonal, Quarterly (`'PCNDGC96'`)
     """
 
     ## API GET request
@@ -88,6 +94,27 @@ def clean_fed_data(json_data: str) -> tuple[pd.DataFrame, npt.NDArray, npt.NDArr
     return df, t, y
 
 
+def catalog_camme() -> tuple[str, str, str]:
+    """Get info on CAMME indicators from INSEE"""
+    url = "https://api.insee.fr/series/BDM/V1/data/ENQ-CONJ-MENAGES/"
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {INSEE_AUTH}",
+    }
+
+    response = requests.get(url, headers=headers)
+    decoded_response = response.content.decode("utf-8")
+    response_json = json.loads(json.dumps(xmltodict.parse(decoded_response)))
+    for i in response_json["message:StructureSpecificData"]["message:DataSet"][
+        "Series"
+    ]:
+        if i["@SERIE_ARRETEE"] == "FALSE" and i["@CORRECTION"] == "BRUT":
+            print(
+                f"""{i['@INDICATEUR']} : {i['@TITLE_FR']}\n\
+            {i['@IDBANK']}\n"""
+            )
+
+
 def get_insee_data(series_id: str) -> list:
     """
     Retrieve data (Series_BDM) from INSEE API
@@ -137,7 +164,7 @@ def clean_insee_data(
     t = df["date"].to_numpy()
     y = df["value"].to_numpy()
 
-    return df, t, y
+    return df[["date", "value"]], t, y
 
 
 def get_bdf_data(series_key: str, dataset: str = "ICP", **kwargs) -> str:
