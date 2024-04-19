@@ -38,7 +38,6 @@ def wavelet_approximation(
     regressions_dict = {}
     crystals = list(range(1, levels + 1))
     for c in crystals:
-        regressions_dict[c] = {}
         x_c = smooth_x_dict[c]["signal"]
         if add_constant:
             x_c = sm.add_constant(x_c)
@@ -49,7 +48,7 @@ def wavelet_approximation(
             print(f"-----Smoothed model, Removing D_{list(range(1, c+1))}-----")
             print("\n")
             print(results.summary())
-        regressions_dict[c]["results"] = results
+        regressions_dict[c] = results
     return regressions_dict
 
 
@@ -136,7 +135,7 @@ approximations = wavelet_approximation(
 
 # %%
 # * Remove D_1 and D_2
-apprx = approximations[2]["results"]
+apprx = approximations[2]
 
 # %%
 # * Plot series
@@ -152,12 +151,38 @@ plot_fit(apprx, exog_idx=1, ax=ax[1])
 results_dur = simple_regression(df, "expectation", "durable")
 results_dur.summary()
 
+# %% [markdown]
+# ### Wavelet approximation
+
+# %%
+mother = "db4"
+t = df["date"].to_numpy()
+x = df["expectation"].to_numpy()
+smooth_x, dwt_levels = dwt.smooth_signal(x, mother)
+y = df["durable"].to_numpy()
+
+# %%
+# * Plot smoothing
+fig1 = dwt.plot_smoothing(smooth_x, t, x, name="Expectations", figsize=(10, 10))
+plt.xlabel("Date")
+fig1.suptitle(f"Wavelet smoothing of Expectations (J={dwt_levels})")
+fig1.tight_layout()
+
+# %%
+approximations = wavelet_approximation(
+    smooth_x_dict=smooth_x, original_y=y, levels=dwt_levels, verbose=True
+)
+
+# %%
+# * Remove D_1 through D_5
+apprx = approximations[5]
+
 # %%
 # * Plot series
-plot_fit(results_dur, exog_idx="expectation")
+fig, ax = plt.subplots(2, 1, figsize=(10, 10))
 
-# %% [markdown]
-# ## Wavelet approximations
+plot_fit(results_dur, exog_idx="expectation", ax=ax[0])
+plot_fit(apprx, exog_idx=1, ax=ax[1])
 
 
 # %% [markdown]
@@ -218,9 +243,40 @@ sns.pairplot(df, corner=True, kind="reg", plot_kws={"ci": None})
 results_dur = simple_regression(df, "expectation", "durable")
 results_dur.summary()
 
+# %% [markdown]
+# ### Wavelet approximation
+
+# %%
+mother = "db4"
+t = df["date"].to_numpy()
+x = df["expectation"].to_numpy()
+smooth_x, dwt_levels = dwt.smooth_signal(x, mother)
+y = df["durable"].to_numpy()
+
+# %%
+# * Plot smoothing
+fig1 = dwt.plot_smoothing(
+    smooth_x, t, x, name="Expectations", figsize=(10, 10), ascending=True
+)
+plt.xlabel("Date")
+fig1.suptitle(f"Wavelet smoothing of Expectations (J={dwt_levels})")
+fig1.tight_layout()
+
+# %%
+approximations = wavelet_approximation(
+    smooth_x_dict=smooth_x, original_y=y, levels=dwt_levels, verbose=True
+)
+
+# %%
+# * Remove all detail components
+apprx = approximations[5]
+
 # %%
 # * Plot series
-plot_fit(results_dur, exog_idx="expectation")
+fig, ax = plt.subplots(2, 1, figsize=(10, 10))
+
+plot_fit(results_dur, exog_idx="expectation", ax=ax[0])
+plot_fit(apprx, exog_idx=1, ax=ax[1])
 
 
 # %%
