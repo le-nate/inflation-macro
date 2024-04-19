@@ -1,4 +1,4 @@
-"""Regress simulated data, including with wavelet approximations"""
+"""Regress simulated data, including with mother approximations"""
 
 # %%
 import matplotlib.pyplot as plt
@@ -84,22 +84,68 @@ def main() -> None:
     print("\n\n-----Error model-----\n")
     print(results_error.summary())
 
-    # * Define subplots
-    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+    # * Calculate differences between actual model and error model coefficients
+    for i, j in enumerate(["alpha0", "alpha1", "alpha2"]):
+        print(
+            f"\n-----% of stderr for {j}: {(results_actual.params[i] - results_error.params[i])/ results_actual.bse[i]}-----\n"
+        )
 
-    # * Plot regression of actual model
-    plot_fit(results_actual, exog_idx=2, ax=ax1)
-    ax1.plot(x2, y_ai, label="y_ai")
-    ax1.set_title("Unobservable model")
+    # * Denoise error model with cumulative subtraction of D1, D2, and D3 crystals
+    mother = "sym12"
+    # levels = 6
+    smooth_signals, dwt_levels = dwt.smooth_signal(x1_er, mother)  # , levels=levels)
 
-    # * Plot regression of error model
-    plot_fit(results_error, exog_idx=2, ax=ax2)
-    ax2.plot(x2, y_ai_er, label="y_ai_er", color="orange")
-    ax2.set_title("Error model")
+    # TODO * Regress smoothed model
+    crystals = [1, 2, 3]
+    for c in crystals:
+        print(c)
+        x = smooth_signals[c]["signal"]
+        y = error_model(x, x2, error_u, error_v)
+        i = sm.add_constant(np.column_stack((x, x2)))
+        model = sm.OLS(y, i)
+        results_smooth = model.fit()
+        print("\n\n")
+        print(f"-----Smoothed model, X1a_er - D_{[i for i in range(1, c+1)]}-----")
+        print("\n")
+        print(results_smooth.summary())
 
-    plt.legend(loc="best")
-    plt.tight_layout()
-    plt.show()
+    # * Calculate differences between actual model and error model coefficients
+    for i, j in enumerate(["alpha0", "alpha1", "alpha2"]):
+        print(
+            f"\n-----% of stderr for {j}: {(results_actual.params[i] - results_error.params[i])/ results_actual.bse[i]}-----\n"
+        )
+
+    # # # * Plot smoothing
+    # fig1 = dwt.plot_smoothing(
+    #     smooth_signals, x=i_values, y=x1_er, name="Error model", figsize=(10, 10)
+    # )
+    # print(smooth_signals.keys())
+    # plt.xlabel("i")
+    # plt.ylabel("Error model")
+    # fig1.suptitle(f"Wavelet smoothing of Error model (J={dwt_levels})")
+    # fig1.tight_layout()
+
+    # # * Define subplots
+    # fig2, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True)
+
+    # # * Plot regression of actual model
+    # plot_fit(results_actual, exog_idx=2, ax=ax1)
+    # ax1.plot(x2, y_ai, label="y_ai")
+    # ax1.set_title("Unobservable model")
+
+    # # * Plot regression of error model
+    # plot_fit(results_error, exog_idx=2, ax=ax2)
+    # ax2.plot(x2, y_ai_er, label="y_ai_er", color="orange")
+    # ax2.set_title("Error model")
+
+    # # TODO Plot regression of smoothed model
+    # plot_fit(results_error, exog_idx=2, ax=ax2)
+    # ax2.plot(x2, y_ai_er, label="y_ai_er", color="orange")
+    # ax2.set_title("Error model")
+
+    # plt.legend(loc="best")
+    # plt.tight_layout()
+    # plt.show()
 
 
 if __name__ == "__main__":
