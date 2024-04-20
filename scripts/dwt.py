@@ -82,6 +82,18 @@ def smooth_signal(
 
     return signals_dict, dwt_levels
 
+def reconstruct_signal_component(
+    signal_coeffs: list, wavelet: str, level: int
+) -> tuple[dict, int]:
+    '''Reconstruct individual component'''
+    component_coeffs = []
+    for l in range(len(signal_coeffs)):
+        if l == level:
+            component_coeffs[l] = signal_coeffs[l]
+        else:
+            component_coeffs = np.zeros_like(signal_coeffs[l])
+    return pywt.waverec(component_coeffs, wavelet)
+
 
 def plot_smoothing(
     smooth_signals: dict,
