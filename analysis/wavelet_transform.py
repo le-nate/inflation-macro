@@ -44,6 +44,7 @@ def normalize_xwt_results(
     signal_size: npt.NDArray,
     xwt_coeffs: npt.NDArray,
     coi: npt.NDArray,
+    coi_min: float,
     freqs: npt.NDArray,
     signif: npt.NDArray,
 ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
@@ -54,5 +55,7 @@ def normalize_xwt_results(
     sig95 = power / sig95  ## Want where power / sig95 > 1
     coi_plot = np.concatenate(
         [np.log2(coi), [1e-9], np.log2(period[-1:]), np.log2(period[-1:]), [1e-9]]
-    )
+    ).clip(
+        min=coi_min
+    )  # ! To keep cone of influence from bleeding off graph
     return period, power, sig95, coi_plot
