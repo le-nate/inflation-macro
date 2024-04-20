@@ -61,7 +61,7 @@ def main() -> None:
     y2 = wt.standardize_data_for_xwt(y2, detrend=False, remove_mean=True)
 
     # *Prepare variables
-    dt = np.diff(t)[0]
+    dt = 1 / 12
     dj = 1 / 8
     s0 = 2 * dt
     mother = wavelet.Morlet(6)  # Morlet wavelet with :math:`\omega_0=6`.
@@ -103,74 +103,68 @@ def main() -> None:
 
     # * Normalize results
     signal_size = y1.size
+    levels = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
     period, power, sig95, coi_plot = wt.normalize_xwt_results(
-        signal_size, xwt_result, coi, freqs, signif
+        signal_size, xwt_result, coi, np.log2(levels[2]), freqs, signif
     )
 
     # * Plot results
     print(dfcombo.head())
     print(dfcombo.info())
     # Create subplots
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+    fig, (ax) = plt.subplots(1, 1, figsize=(10, 8), sharex=True)
 
     # Plot XWT
     extent = [min(t), max(t), min(coi_plot), max(period)]
 
-    # Plot the time series data
-    ax2.set_title("b) Time series")
-    ax2.set_ylabel("Amplitude")
-    ax2.plot(t, y1, "-", linewidth=1)
-    ax2.plot(t, y2, "k", linewidth=1.5)
-    ax2.legend(["Expected Inflation", "Expected Consumption"])
-
     # Normalized cwt power spectrum
-    levels = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
-    im1 = NonUniformImage(ax1, interpolation="bilinear", extent=extent)
-    im1.set_data(t, period, power)
-    ax1.images.append(im1)
-    # ax1.contourf(
-    #     t,
-    #     np.log2(period),
-    #     np.log2(power),
-    #     np.log2(levels),
-    #     extend="both",
-    #     cmap="jet",
-    #     extent=extent,
-    # )
+    ax.contourf(
+        t,
+        np.log2(period),
+        np.log2(power),
+        np.log2(levels),
+        extend="both",
+        cmap="jet",
+        extent=extent,
+    )
 
     # Plot signifance levels
-    ax1.contour(
+    ax.contour(
         t, np.log2(period), sig95, [-99, 1], colors="k", linewidths=2, extent=extent
     )
     # Plot coi
-    ax1.fill(
+    ax.fill(
         np.concatenate([t, t[-1:] + dt, t[-1:] + dt, t[:1] - dt, t[:1] - dt]),
         coi_plot,
         "k",
         alpha=0.3,
-        hatch="x",
+        hatch="--",
     )
-
-    # TODO Plot phase difference arrows
-    print("lens", len(t), len(period))
-    ax1.quiver(
-        t[::4],
-        period[::],
-        u[::3, ::3],
-        v[::3, ::3],
+    print(
+        t[::12],
+        np.log2(period[::8]),
+        u[::12, ::12],
+        v[::12, ::12],
+    )
+    # * Plot phase difference arrows
+    ax.quiver(
+        t[::12],
+        np.log2(period[::8]),
+        u[::12, ::12],
+        v[::12, ::12],
         units="width",
         angles="uv",
         pivot="mid",
         linewidth=1,
         edgecolor="k",
-        headwidth=10,
-        headlength=10,
-        headaxislength=5,
-        minshaft=2,
-        minlength=5,
+        headwidth=2,
+        headlength=2,
+        headaxislength=1,
+        minshaft=0.2,
+        minlength=0.5,
     )
 
-    ax1.set_ylim(ax1.get_ylim()[::-1])
+    ax.set_ylim(ax.get_ylim()[::-1])
 
     # # TODO Plot phase difference as time series
     # # ! Not correct
@@ -178,14 +172,14 @@ def main() -> None:
     # ax3.plot(t, np.angle(y1), "b")
     # ax3.plot(t, np.angle(y2), "r")
 
-    ax1.set_title(f"a) Cross-Wavelet Power Spectrum ({measure_1} X {measure_2})")
-    ax1.set_ylabel("Period (months)")
+    ax.set_title(f"a) Cross-Wavelet Power Spectrum ({measure_1} X {measure_2})")
+    ax.set_ylabel("Period (months)")
     #
     y_ticks = 2 ** np.arange(
         np.ceil(np.log2(period.min())), np.ceil(np.log2(period.max()))
     )
-    ax1.set_yticks(np.log2(y_ticks))
-    ax1.set_yticklabels(y_ticks)
+    ax.set_yticks(np.log2(y_ticks))
+    ax.set_yticklabels(y_ticks)
 
     plt.show()
 
