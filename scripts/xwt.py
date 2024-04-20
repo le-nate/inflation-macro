@@ -19,14 +19,10 @@ def main() -> None:
     measure_1 = "MICH"
     raw_data = rd.get_fed_data(measure_1)
     df1, _, _ = rd.clean_fed_data(raw_data)
-    print(df1.head())
-    print(df1.tail())
 
     measure_2 = "PCEND"
     raw_data = rd.get_fed_data(measure_2, units="pc1")
     df2, _, _ = rd.clean_fed_data(raw_data)
-    print(df2.head())
-    print(df2.tail())
 
     # measure_1 = "000857180"
     # raw_data = rd.get_insee_data(measure_1)
@@ -141,10 +137,10 @@ def main() -> None:
         hatch="--",
     )
     print(
-        t[::12],
-        np.log2(period[::8]),
-        u[::12, ::12],
-        v[::12, ::12],
+        t[::12].shape,
+        np.log2(period[::8]).shape,
+        u[::12, ::12].shape,
+        v[::12, ::12].shape,
     )
     # * Plot phase difference arrows
     ax.quiver(
@@ -155,26 +151,22 @@ def main() -> None:
         units="width",
         angles="uv",
         pivot="mid",
-        linewidth=1,
+        linewidth=0.5,
         edgecolor="k",
-        headwidth=2,
-        headlength=2,
-        headaxislength=1,
-        minshaft=0.2,
-        minlength=0.5,
+        alpha=0.7,
+        # headwidth=2,
+        # headlength=2,
+        # headaxislength=1,
+        # minshaft=0.2,
+        # minlength=0.5,
     )
 
+    # * Invert y axis
     ax.set_ylim(ax.get_ylim()[::-1])
 
-    # # TODO Plot phase difference as time series
-    # # ! Not correct
-    # ax3.plot(t, phase_diff, "y", label="Phase difference")
-    # ax3.plot(t, np.angle(y1), "b")
-    # ax3.plot(t, np.angle(y2), "r")
+    ax.set_title("Inflation Expectations X Nondurables Consumption (US)")
+    ax.set_ylabel("Period (years)")
 
-    ax.set_title(f"a) Cross-Wavelet Power Spectrum ({measure_1} X {measure_2})")
-    ax.set_ylabel("Period (months)")
-    #
     y_ticks = 2 ** np.arange(
         np.ceil(np.log2(period.min())), np.ceil(np.log2(period.max()))
     )
