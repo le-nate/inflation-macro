@@ -1,7 +1,9 @@
+"""Cross wavelet transformation"""
+
 from __future__ import division
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+from matplotlib.image import NonUniformImage
 import pandas as pd
 import pycwt as wavelet
 from pycwt.helpers import find
@@ -14,44 +16,90 @@ def main() -> None:
     """Run script"""
 
     # * Load dataset
-    measure_1 = "PSAVERT"
+    measure_1 = "MICH"
     raw_data = rd.get_fed_data(measure_1)
     df1, _, _ = rd.clean_fed_data(raw_data)
+    print(df1.head())
+    print(df1.tail())
 
-    measure_2 = "MICH"
-    raw_data = rd.get_fed_data(measure_2)
+    measure_2 = "PCEND"
+    raw_data = rd.get_fed_data(measure_2, units="pc1")
     df2, _, _ = rd.clean_fed_data(raw_data)
+    print(df2.head())
+    print(df2.tail())
+
+    # measure_1 = "000857180"
+    # raw_data = rd.get_insee_data(measure_1)
+    # df1, _, _ = rd.clean_insee_data(raw_data)
+    # print(df1.head())
+    # print(df1.tail())
+
+    # measure_2 = "000857181"
+    # raw_data = rd.get_insee_data(measure_2)
+    # df2, _, _ = rd.clean_insee_data(raw_data)
+    # print(df2.head())
+    # print(df2.tail())
 
     # * Pre-process data: Align time series temporally
     dfcombo = df1.merge(df2, how="left", on="date", suffixes=("_1", "_2"))
-    print(dfcombo.info())
     dfcombo.dropna(inplace=True)
-    print("\n", dfcombo.shape)
 
     # * Pre-process data: Standardize and detrend
     y1 = dfcombo["value_1"].to_numpy()
     y2 = dfcombo["value_2"].to_numpy()
-    # # TODO check normalization approach
-    # # p = np.polyfit(t - t0, dat, 1)
-    # # dat_notrend = dat - np.polyval(p, t - t0)
-    # std = y1.std()  #! dat_notrend.std()  # Standard deviation
+    t = np.linspace(1, y1.size + 1, y1.size)
+    # # # TODO check normalization approach
+    # p = np.polyfit(t, y1, 1)
+    # dat_notrend = y1 - np.polyval(p, t)
+    # std = dat_notrend.std()  # Standard deviation
     # var1 = std**2  # Variance
-    # y1 = y1 / std  #! dat_notrend / std  # Normalized dataset
+    # y1 = dat_notrend / std  # Normalized dataset
     # std = y2.std()  #! dat_notrend.std()  # Standard deviation
     # var2 = std**2  # Variance
     # y2 = y2 / std  #! dat_notrend / std  # Normalized dataset
-    # # y1 = wt.standardize_data_for_xwt(y1, detrend=False, remove_mean=True)
-    # # y2 = wt.standardize_data_for_xwt(y2, detrend=False, remove_mean=True)
+    y1 = wt.standardize_data_for_xwt(y1, detrend=False, remove_mean=True)
+    y2 = wt.standardize_data_for_xwt(y2, detrend=False, remove_mean=True)
 
     # *Prepare variables
-    t = np.linspace(1, y1.size + 1, y1.size)
-    print(t.shape, y1.size)
-    dt = t[1] - t[0]
-    dj = 1 / 12
+    dt = np.diff(t)[0]
+    dj = 1 / 8
+    s0 = 2 * dt
     mother = wavelet.Morlet(6)  # Morlet wavelet with :math:`\omega_0=6`.
 
     # * Perform cross wavelet transform
-    xwt_result, coi, freqs, signif = wavelet.xwt(y1, y2, dt=dt, dj=dj, wavelet=mother)
+    xwt_result, coi, freqs, signif = wavelet.xwt(
+        y1, y2, dt=dt, dj=dj, s0=s0, wavelet=mother, ignore_strong_trends=False
+    )
+
+    # * Caclulate wavelet coherence
+
+    # Calculate the wavelet coherence (WTC). The WTC finds regions in time
+    # frequency space where the two time seris co-vary, but do not necessarily have
+    # high power.
+    _, a_WCT, _, _, _ = wavelet.wct(
+        y1,
+        y2,
+        dt,
+        dj=1 / 12,
+        s0=-1,
+        J=-1,
+        sig=False,  #! To save time
+        # significance_level=0.8646,
+        wavelet="morlet",
+        normalize=True,
+        cache=True,
+    )
+    # * Calculate phase
+    # Calculates the phase between both time series. The phase arrows in the
+    # cross wavelet power spectrum rotate clockwise with 'north' origin.
+    # The relative phase relationship convention is the same as adopted
+    # by Torrence and Webster (1999), where in phase signals point
+    # upwards (N), anti-phase signals point downwards (S). If X leads Y,
+    # arrows point to the right (E) and if X lags Y, arrow points to the
+    # left (W).
+    angle = 0.5 * np.pi - a_WCT
+    u, v = np.cos(angle), np.sin(angle)
+    print(len(u), len(v))
 
     # * Normalize results
     signal_size = y1.size
@@ -60,8 +108,10 @@ def main() -> None:
     )
 
     # * Plot results
+    print(dfcombo.head())
+    print(dfcombo.info())
     # Create subplots
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
 
     # Plot XWT
     extent = [min(t), max(t), min(coi_plot), max(period)]
@@ -71,22 +121,28 @@ def main() -> None:
     ax2.set_ylabel("Amplitude")
     ax2.plot(t, y1, "-", linewidth=1)
     ax2.plot(t, y2, "k", linewidth=1.5)
+    ax2.legend(["Expected Inflation", "Expected Consumption"])
 
-    # Normalized cwt power spectrum, signifance levels, and cone of influence
-    # Period scale is logarithmic
+    # Normalized cwt power spectrum
     levels = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
-    ax1.contourf(
-        t,
-        np.log2(period),
-        np.log2(power),
-        np.log2(levels),
-        extend="both",
-        cmap="jet",
-        extent=extent,
-    )
+    im1 = NonUniformImage(ax1, interpolation="bilinear", extent=extent)
+    im1.set_data(t, period, power)
+    ax1.images.append(im1)
+    # ax1.contourf(
+    #     t,
+    #     np.log2(period),
+    #     np.log2(power),
+    #     np.log2(levels),
+    #     extend="both",
+    #     cmap="jet",
+    #     extent=extent,
+    # )
+
+    # Plot signifance levels
     ax1.contour(
         t, np.log2(period), sig95, [-99, 1], colors="k", linewidths=2, extent=extent
     )
+    # Plot coi
     ax1.fill(
         np.concatenate([t, t[-1:] + dt, t[-1:] + dt, t[:1] - dt, t[:1] - dt]),
         coi_plot,
@@ -94,14 +150,42 @@ def main() -> None:
         alpha=0.3,
         hatch="x",
     )
-    ax1.set_title("a) {} Cross-Wavelet Power Spectrum ({})".format("", mother.name))
-    ax1.set_ylabel("Period (years)")
+
+    # TODO Plot phase difference arrows
+    print("lens", len(t), len(period))
+    ax1.quiver(
+        t[::4],
+        period[::],
+        u[::3, ::3],
+        v[::3, ::3],
+        units="width",
+        angles="uv",
+        pivot="mid",
+        linewidth=1,
+        edgecolor="k",
+        headwidth=10,
+        headlength=10,
+        headaxislength=5,
+        minshaft=2,
+        minlength=5,
+    )
+
+    ax1.set_ylim(ax1.get_ylim()[::-1])
+
+    # # TODO Plot phase difference as time series
+    # # ! Not correct
+    # ax3.plot(t, phase_diff, "y", label="Phase difference")
+    # ax3.plot(t, np.angle(y1), "b")
+    # ax3.plot(t, np.angle(y2), "r")
+
+    ax1.set_title(f"a) Cross-Wavelet Power Spectrum ({measure_1} X {measure_2})")
+    ax1.set_ylabel("Period (months)")
     #
-    Yticks = 2 ** np.arange(
+    y_ticks = 2 ** np.arange(
         np.ceil(np.log2(period.min())), np.ceil(np.log2(period.max()))
     )
-    ax1.set_yticks(np.log2(Yticks))
-    ax1.set_yticklabels(Yticks)
+    ax1.set_yticks(np.log2(y_ticks))
+    ax1.set_yticklabels(y_ticks)
 
     plt.show()
 
