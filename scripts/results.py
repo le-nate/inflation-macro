@@ -4,7 +4,7 @@
 import matplotlib.pyplot as plt
 import pywt
 
-from wavelet_smoothing import smooth_signal
+from scripts.dwt import smooth_signal
 from analysis import retrieve_data as rd
 
 ## Matplotlib Settings
@@ -22,7 +22,7 @@ plt.rc("legend", fontsize=SMALL_SIZE)  # legend fontsize
 plt.rc("figure", titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 raw_data = rd.get_insee_data("000857179")
-t, y = rd.clean_insee_data(raw_data)
+_, t, y = rd.clean_insee_data(raw_data)
 
 ## Define the wavelet type
 WAVELET = "db4"
