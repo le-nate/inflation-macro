@@ -90,7 +90,6 @@ def reconstruct_signal_component(
     component_coeffs = signal_coeffs.copy()
     for l in range(len(signal_coeffs)):
         if l == level:
-            print(f"reconstructing for level {level - l}")
             component_coeffs[l] = component_coeffs[l]
         else:
             component_coeffs[l] = np.zeros_like(component_coeffs[l])
