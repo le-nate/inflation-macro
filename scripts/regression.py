@@ -116,6 +116,10 @@ def plot_compare_components(
     return fig
 
 
+# ! Define mother wavelet
+MOTHER = "db4"
+
+
 # %% [markdown]
 # # US data for comparison to Coibion et al. (2021)
 print(
@@ -172,7 +176,6 @@ sns.pairplot(df, corner=True, kind="reg", plot_kws={"ci": None})
 # ## Wavelet decomposition
 
 # %%
-MOTHER = "db4"
 t = df["date"].to_numpy()
 x = df["expectation"].to_numpy()
 y = df["nondurable"].to_numpy()
@@ -510,7 +513,6 @@ def main() -> None:
     print(df.head(), "\n", df.tail())
 
     sns.pairplot(df, corner=True, kind="reg", plot_kws={"ci": None})
-    sns.lineplot(data=pd.melt(df, ["date"]), x="date", y="value", hue="variable")
 
     # * Wavelet decomposition
     t = df["date"].to_numpy()
@@ -545,6 +547,12 @@ def main() -> None:
         MOTHER,
         figsize=(15, 10),
     )
+
+    # * Plot initial series
+    df_melt = pd.melt(df, ["date"])
+    df_melt.rename(columns={"value": "%"}, inplace=True)
+    fig3, (bx) = plt.subplots(1, 1)
+    bx = sns.lineplot(data=df_melt, x="date", y="%", hue="variable", ax=bx)
 
     plt.show()
 
