@@ -20,7 +20,7 @@ def main() -> None:
     raw_data = rd.get_fed_data(measure_1)
     df1, _, _ = rd.clean_fed_data(raw_data)
 
-    measure_2 = "PCEND"
+    measure_2 = "PCEDG"
     raw_data = rd.get_fed_data(measure_2, units="pc1")
     df2, _, _ = rd.clean_fed_data(raw_data)
 
@@ -67,12 +67,15 @@ def main() -> None:
         y1, y2, dt=dt, dj=dj, s0=s0, wavelet=mother, ignore_strong_trends=False
     )
 
-    # * Caclulate wavelet coherence
+    # * Normalize results
+    signal_size = y1.size
+    levels = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
+    period, power, sig95, coi_plot = wt.normalize_xwt_results(
+        signal_size, xwt_result, coi, np.log2(levels[2]), freqs, signif
+    )
 
-    # Calculate the wavelet coherence (WTC). The WTC finds regions in time
-    # frequency space where the two time seris co-vary, but do not necessarily have
-    # high power.
-    _, a_WCT, _, _, _ = wavelet.wct(
+    # * Caclulate wavelet coherence
+    _, phase, _, _, _ = wavelet.wct(
         y1,
         y2,
         dt,
@@ -85,6 +88,7 @@ def main() -> None:
         normalize=True,
         cache=True,
     )
+
     # * Calculate phase
     # Calculates the phase between both time series. The phase arrows in the
     # cross wavelet power spectrum rotate clockwise with 'north' origin.
@@ -93,16 +97,9 @@ def main() -> None:
     # upwards (N), anti-phase signals point downwards (S). If X leads Y,
     # arrows point to the right (E) and if X lags Y, arrow points to the
     # left (W).
-    angle = 0.5 * np.pi - a_WCT
+    angle = 0.5 * np.pi - phase
     u, v = np.cos(angle), np.sin(angle)
     print(len(u), len(v))
-
-    # * Normalize results
-    signal_size = y1.size
-    levels = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
-    period, power, sig95, coi_plot = wt.normalize_xwt_results(
-        signal_size, xwt_result, coi, np.log2(levels[2]), freqs, signif
-    )
 
     # * Plot results
     print(dfcombo.head())
@@ -164,14 +161,23 @@ def main() -> None:
     # * Invert y axis
     ax.set_ylim(ax.get_ylim()[::-1])
 
-    ax.set_title("Inflation Expectations X Nondurables Consumption (US)")
-    ax.set_ylabel("Period (years)")
+    # # * Set x axis tick labels
+    # start = dfcombo["date"].dt.year.iat[0]
+    # end = dfcombo["date"].dt.year.iat[len(dfcombo) - 1]
+    # print(start, end)
+    # x_ticks = np.arange(start, end, 6)
+    # # ax.set_xticks(x_ticks)
+    # ax.set_xticklabels(x_ticks)
 
+    # * Set y axis tick labels
     y_ticks = 2 ** np.arange(
         np.ceil(np.log2(period.min())), np.ceil(np.log2(period.max()))
     )
     ax.set_yticks(np.log2(y_ticks))
     ax.set_yticklabels(y_ticks)
+
+    ax.set_title("Inflation Expectations X Durables Consumption (US)")
+    ax.set_ylabel("Period (years)")
 
     plt.show()
 
