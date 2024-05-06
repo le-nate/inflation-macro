@@ -15,6 +15,11 @@ from pycwt.helpers import find
 
 from analysis import retrieve_data as rd
 
+# * Define title and labels for plots
+LABEL = "Expected Inflation (US)"
+UNITS = "%"
+NORMALIZE = True  # ! Define normalization
+
 # * Load dataset
 MEASURE = "MICH"
 raw_data = rd.get_fed_data(MEASURE)  # , units="pc1", freqs="m")
@@ -27,10 +32,6 @@ t0 = t0.astype("datetime64[Y]").astype(int) + 1970
 print(t0)
 DT = 1 / 12  # In years
 
-# * Define title and labels for plots
-TITLE = MEASURE
-LABEL = "Expected Inflation (US)"
-UNITS = "%"
 
 # We also create a time array in years.
 N = dat.size
@@ -41,7 +42,11 @@ t = np.arange(1, N + 1) * DT + t0
 # dat_notrend = dat - np.polyval(p, t - t0)
 std = dat.std()  #! dat_notrend.std()  # Standard deviation
 var = std**2  # Variance
-# dat_norm = dat / std  #! dat_notrend / std  # Normalized dataset
+
+if NORMALIZE:
+    dat_norm = dat / std  #! dat_notrend / std  # Normalized dataset
+else:
+    dat_norm = dat
 
 # * Define wavelet parameters
 mother = wavelet.Morlet(6)  # Morlet wavelet with :math:`\omega_0=6`.
@@ -52,7 +57,7 @@ alpha, _, _ = wavelet.ar1(dat)  # Lag-1 autocorrelation for red noise
 
 # * Conduct ransformations
 # Wavelet transform
-wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(dat, DT, DJ, S0, J, mother)
+wave, scales, freqs, coi, fft, fftfreqs = wavelet.cwt(dat_norm, DT, DJ, S0, J, mother)
 # Inverse wavelet transform
 iwave = wavelet.icwt(wave, scales, DT, DJ, mother) * std
 # Normalized wavelet power spectrum
@@ -116,15 +121,11 @@ power_spec = bx.contourf(
     np.log2(power),
     np.log2(levels),
     extend="both",
-    cmap=plt.cm.jet,
+    cmap="jet",
 )
-power_spec.set_clim(
-    np.log2(power).min(),
-    np.log2(power).max(),
-)
-cbar = fig.colorbar(power_spec)
+
 extent = [t.min(), t.max(), 0, max(period)]
-bx.contour(t, np.log2(period), sig95, [-99, 1], colors="k", linewidths=2, extent=extent)
+bx.contour(t, np.log2(period), sig95, [-99, 1], colors="k", linewidths=3, extent=extent)
 bx.fill(
     np.concatenate([t, t[-1:] + DT, t[-1:] + DT, t[:1] - DT, t[:1] - DT]),
     np.concatenate(
@@ -142,13 +143,18 @@ bx.fill(
     alpha=0.3,
     hatch="--",
 )
+
+# * Invert y axis
+bx.set_ylim(bx.get_ylim()[::-1])
+
+# * Set labels/title
+bx.set_xlabel("")
 bx.set_ylabel("Period (years)")
 #
 Yticks = 2 ** np.arange(np.ceil(np.log2(period.min())), np.ceil(np.log2(period.max())))
 bx.set_yticks(np.log2(Yticks))
 bx.set_yticklabels(Yticks)
+bx.set_title(LABEL)
 
-# * Invert y axis
-bx.set_ylim(bx.get_ylim()[::-1])
 
 plt.show()
