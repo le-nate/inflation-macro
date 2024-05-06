@@ -90,8 +90,8 @@ def main() -> None:
 
     # * Denoise error model with cumulative subtraction of D1, D2, and D3 crystals
     mother = "sym12"
-    levels = 6
-    smooth_signals, dwt_levels = dwt.smooth_signal(x1_er, mother, levels=levels)
+    # levels = 6
+    smooth_signals, dwt_levels = dwt.smooth_signal(x1_er, mother)  # , levels=levels)
 
     # * Regress smoothed model
     regressions_dict = {}
@@ -138,7 +138,7 @@ def main() -> None:
         rf"Error model, $\alpha_{{1}}$: {results_error.params[1]}, $\sigma^{{2}}$: {results_error.bse[1]}"
     )
 
-    # TODO Plot regression of smoothed model
+    # * Plot regression of smoothed model
     plot_fit(regressions_dict[3]["results"], exog_idx=2, ax=ax3)
     ax3.plot(x2, regressions_dict[3]["y"], label=r"y($S_{{3}}$)", color="pink")
     ax3.set_title(
