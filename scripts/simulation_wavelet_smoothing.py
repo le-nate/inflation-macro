@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from simulation_consumption import consumption
-import wavelet_smoothing
+import scripts.dwt as dwt
 
 
 def main() -> None:
@@ -28,7 +28,7 @@ def main() -> None:
 
     ## Define the wavelet type
     wavelet_type = "sym12"
-    smooth_signals = wavelet_smoothing.smooth_signal(y, wavelet_type)
+    smooth_signals = dwt.smooth_signal(y, wavelet_type)
 
     ## Input name of time series
     print("Enter name of time series (to be included in plot)")
