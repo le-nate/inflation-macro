@@ -208,7 +208,6 @@ ax1.fill(
     hatch="x",
 )
 ax1.set_title("Cross-Wavelet")
-print(len(t1[::3]), len(cross_period[::3]))
 ax1.quiver(
     t1[::3],
     cross_period[::3],
