@@ -3,7 +3,8 @@
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List, Union
+import time
+from typing import Dict, Generator, List, Union
 
 import dateparser
 import numpy as np
@@ -11,6 +12,13 @@ import numpy.typing as npt
 import pandas as pd
 
 import data.camme
+from constants.camme import (
+    IGNORE_HOUSING,
+    IGNORE_HOUSING_YEARS,
+    IGNORE_SUPPLEMENTS,
+    VARS_DICT,
+)
+
 
 # * Define logging threshold
 logging.basicConfig(level=logging.DEBUG)
@@ -18,23 +26,6 @@ logging.basicConfig(level=logging.DEBUG)
 # * Get data directory folder
 parent_dir = Path(__file__).parents[1]
 data_dir = parent_dir / "data" / "camme"
-
-# * Survey waves to ignore
-IGNORE_SUPPLEMENTS = ["be", "cnle", "cov", "pf"]
-IGNORE_HOUSING = "log"
-# Only these years had separate housing surveys
-IGNORE_HOUSING_YEARS = ["2016", "2017"]
-
-# * Variables and corresponding column names (change over course of series)
-# * Variables used in Andrade et al. (2023)
-VARS_DICT = {
-    "inf_exp_qual": {},
-    "inf_exp_val": {},
-    "consump_past": {},
-    "consump_general": {
-        "2014": "ACHATS",
-    },
-}
 
 
 def retrieve_folders(path: Union[str, os.PathLike]) -> Dict[
@@ -72,7 +63,7 @@ def retrieve_csv_files(
     return dir_dict
 
 
-def convert_to_dataframe(
+def convert_to_year_dataframe(
     dir_dict: Dict[str, Union[str, os.PathLike]]
 ) -> Dict[str, pd.DataFrame]:
     """Combine all dataframes into one for all years"""
@@ -84,15 +75,47 @@ def convert_to_dataframe(
             df = pd.read_csv(table, delimiter=";", encoding="latin-1")
             df_complete.append(df)
         df_dict[year] = pd.concat(df_complete)
-        logging.debug(df_dict[year].shape)
+        logging.debug("DataFrame shape: %s", df_dict[year].shape)
     return df_dict
+
+
+def nested_dict_values(nested_dict: Dict) -> Generator[any, any, any]:
+    """Extract nested dict values"""
+    for v in nested_dict.values():
+        if isinstance(v, dict):
+            yield from nested_dict_values(v)
+        else:
+            yield v
+
+
+def nested_list_values(nested_list: List[List[str]]) -> Generator[any, any, any]:
+    """Extract nested list values"""
+    for v in nested_list:
+        if isinstance(v, list):
+            yield from nested_list_values(v)
+        else:
+            yield v
 
 
 def main() -> None:
     """Run script"""
+    logging.info("Retrieving folders")
     camme_csv_folders = retrieve_folders(data_dir)
+    logging.info("Retrieving CSV files")
     camme_csv_folders = retrieve_csv_files(camme_csv_folders)
-    dfs = convert_to_dataframe(camme_csv_folders)
+    logging.info("Converting to DataFrames")
+    start = time.time()
+    dfs = convert_to_year_dataframe(camme_csv_folders)
+    end = time.time()
+    dtime = end - start
+    logging.debug("Elapsed time to convert to DataFrames: %s", dtime)
+    ## Elapsed time before change: 11.67s
+    cols = list(nested_dict_values(VARS_DICT))
+    cols = list(nested_list_values(cols))
+    logging.debug(cols)
+    print(dfs["2014"][cols].head())
+
+    # TODO add column for year
 
 
 if __name__ == "__main__":
