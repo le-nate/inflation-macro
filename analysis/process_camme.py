@@ -80,22 +80,21 @@ def define_year_columns(year_df: str) -> List[str]:
     final_cols = [c for c in VARS_DICT]
     if int(year_df) < var_name_year[1]:
         key_year = str(var_name_year[0])
-        logging.debug(key_year)
-        return [
+        year_cols = [
             VARS_DICT[c][key_year] for c in final_cols if VARS_DICT[c][key_year] != ""
         ]
     elif var_name_year[1] <= int(year_df) < var_name_year[2]:
         key_year = str(var_name_year[1])
-        logging.debug(key_year)
-        return [
+        year_cols = [
             VARS_DICT[c][key_year] for c in final_cols if VARS_DICT[c][key_year] != ""
         ]
     else:
         key_year = str(var_name_year[2])
-        logging.debug(key_year)
-        return nested_list_values(
+        year_cols = nested_list_values(
             [VARS_DICT[c][key_year] for c in final_cols if VARS_DICT[c][key_year] != ""]
         )
+    new_cols_dict = {VARS_DICT[new][key_year]: new for new in VARS_DICT}
+    return year_cols, new_cols_dict
 
 
 def convert_to_year_dataframe(
@@ -106,21 +105,34 @@ def convert_to_year_dataframe(
     for year in dir_dict:
         # Empty DataFrame for complete year's data
         df_complete = []
-        cols = define_year_columns(year)
-        logging.debug("Columns to extract: %s", cols)
+        cols, new_cols = define_year_columns(year)
+        # if isinstance(cols, Generator) is True:
+        #     cols = list(cols)
+        logging.debug("Columns to extract for %s: %s", year, cols)
         for table in dir_dict[year]["csv"]:
             df = pd.read_csv(table, delimiter=";", encoding="latin-1")
-            df_complete.append(df[cols])
+            df = df[cols]
+            df["file_name"] = Path(table).name
+            # cols2 = cols + ["file_name"]
+            # logging.debug("confirming columns for cols2 %s", cols2)
+            df_complete.append(df)
         df_dict[year] = pd.concat(df_complete)
 
         # Rename to standard columns names
+        logging.debug("Renaming columns %s", new_cols)
         df_dict[year].rename(
-            columns={old: new for old, new in zip(df_dict[year].columns, VARS_DICT)},
+            columns=new_cols,
             inplace=True,
         )
         df_dict[year]["year"] = int(year)
         logging.debug("DataFrame shape: %s", df_dict[year].shape)
     return df_dict
+
+
+def create_complete_dataframe(dir_dict: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Combine dataframes for each year"""
+    # for year,
+    pass
 
 
 def main() -> None:
@@ -139,7 +151,10 @@ def main() -> None:
     logging.info(dfs["2014"].head())
     for y, d in dfs.items():
         logging.info("%s %s", y, d.columns.to_list())
-    print(dfs["2014"].head())
+    print(dfs["1989"].head())
+    print(dfs["1991"].head())
+    print(dfs["2004"].head())
+    print(dfs["2021"].head())
 
 
 if __name__ == "__main__":
