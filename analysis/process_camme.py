@@ -17,11 +17,11 @@ import logging
 import os
 from pathlib import Path
 import time
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
 import pandas as pd
 
-from helpers import nested_list_values
+from analysis.helpers import nested_list_values
 from constants.camme import (
     IGNORE_HOUSING,
     IGNORE_HOUSING_YEARS,
@@ -65,27 +65,23 @@ def retrieve_csv_files(
     return dir_dict
 
 
-def define_year_columns(year_df: str) -> List[str]:
+def define_year_columns(year_df: str) -> Tuple[List[str], Dict[str, str]]:
     """Extract appropriate columns depending on year and corresponding names"""
     var_name_year = sorted([int(y) for y in VARS_DICT["inf_exp_qual"]])
     # Define standardized names for columns to keep
     final_cols = [c for c in VARS_DICT]
     if int(year_df) < var_name_year[1]:
         key_year = str(var_name_year[0])
-        year_cols = [
-            VARS_DICT[c][key_year] for c in final_cols if VARS_DICT[c][key_year] != ""
-        ]
     elif var_name_year[1] <= int(year_df) < var_name_year[2]:
         key_year = str(var_name_year[1])
-        year_cols = [
-            VARS_DICT[c][key_year] for c in final_cols if VARS_DICT[c][key_year] != ""
-        ]
     else:
         key_year = str(var_name_year[2])
-        year_cols = nested_list_values(
-            [VARS_DICT[c][key_year] for c in final_cols if VARS_DICT[c][key_year] != ""]
-        )
-    new_cols_dict = {VARS_DICT[new][key_year]: new for new in VARS_DICT}
+    year_cols = [
+        VARS_DICT[c][key_year].lower()
+        for c in final_cols
+        if VARS_DICT[c][key_year] != ""
+    ]
+    new_cols_dict = {VARS_DICT[new][key_year].lower(): new for new in VARS_DICT}
     return year_cols, new_cols_dict
 
 
@@ -98,17 +94,15 @@ def convert_to_year_dataframe(
         # Empty list for DataFrames for complete year's data
         df_complete = []
         cols, new_cols = define_year_columns(year)
-        # if isinstance(cols, Generator) is True:
-        #     cols = list(cols)
         logging.debug("Columns to extract for %s: %s", year, cols)
         for table in dir_dict[year]["csv"]:
             df = pd.read_csv(table, delimiter=";", encoding="latin-1")
+            # * Set columns as lowercase since some apparently are read as having different cases than in their csv file
+            df.columns = df.columns.str.lower()
             df = df[cols]
             df["file_name"] = Path(table).name
-            # cols2 = cols + ["file_name"]
-            # logging.debug("confirming columns for cols2 %s", cols2)
             df_complete.append(df)
-        df_dict[year] = pd.concat(df_complete)
+        df_dict[year] = pd.concat(df_complete, axis=0, ignore_index=True)
 
         # Rename to standard columns names
         logging.debug("Renaming columns %s", new_cols)
@@ -117,6 +111,9 @@ def convert_to_year_dataframe(
             inplace=True,
         )
         df_dict[year]["year"] = int(year)
+        logging.debug(
+            "# of NaNs for %s: %s", year, df_dict[year]["month"].isnull().sum()
+        )
         logging.debug("DataFrame shape: %s", df_dict[year].shape)
     return df_dict
 
@@ -130,7 +127,7 @@ def create_complete_dataframe(dir_dict: Dict[str, pd.DataFrame]) -> pd.DataFrame
     return pd.concat(df_complete, axis=0, ignore_index=True)
 
 
-def preprocess() -> pd.DataFrame:
+def preprocess() -> Tuple[Dict[str, pd.DataFrame], pd.DataFrame]:
     """Create DataFrame with all years' data"""
     # * Get data directory folder
     parent_dir = Path(__file__).parents[1]
@@ -150,12 +147,12 @@ def preprocess() -> pd.DataFrame:
     print(dfs["1991"].head())
     print(dfs["2004"].head())
     print(dfs["2021"].head())
-    return create_complete_dataframe(dfs)
+    return dfs, create_complete_dataframe(dfs)
 
 
 def main() -> None:
     """Run script"""
-    df_final = preprocess()
+    _, df_final = preprocess()
     print(df_final[df_final["year"] == 2021].head())
     print(df_final.tail())
     print(df_final.info())
