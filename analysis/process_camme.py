@@ -29,6 +29,13 @@ from constants.camme import (
     VARS_DICT,
 )
 
+# * Logging config
+logging.basicConfig(level="INFO")
+
+# * Get data directory folder
+parent_dir = Path(__file__).parents[1]
+data_dir = parent_dir / "data" / "camme"
+
 
 def retrieve_folders(path: Union[str, os.PathLike]) -> Dict[
     str,
@@ -97,7 +104,8 @@ def convert_to_year_dataframe(
         logging.debug("Columns to extract for %s: %s", year, cols)
         for table in dir_dict[year]["csv"]:
             df = pd.read_csv(table, delimiter=";", encoding="latin-1")
-            # * Set columns as lowercase since some apparently are read as having different cases than in their csv file
+            # * Set columns as lowercase since some apparently are read as
+            # * having different cases than in their csv file
             df.columns = df.columns.str.lower()
             df = df[cols]
             df["file_name"] = Path(table).name
@@ -129,9 +137,6 @@ def create_complete_dataframe(dir_dict: Dict[str, pd.DataFrame]) -> pd.DataFrame
 
 def preprocess() -> Tuple[Dict[str, pd.DataFrame], pd.DataFrame]:
     """Create DataFrame with all years' data"""
-    # * Get data directory folder
-    parent_dir = Path(__file__).parents[1]
-    data_dir = parent_dir / "data" / "camme"
     logging.info("Retrieving folders")
     camme_csv_folders = retrieve_folders(data_dir)
     logging.info("Retrieving CSV files")
