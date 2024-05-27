@@ -17,25 +17,17 @@ import logging
 import os
 from pathlib import Path
 import time
-from typing import Dict, Generator, List, Union
+from typing import Dict, List, Union
 
-import dateparser
-import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
-from helpers import nested_dict_values, nested_list_values
+from helpers import nested_list_values
 from constants.camme import (
     IGNORE_HOUSING,
     IGNORE_HOUSING_YEARS,
     IGNORE_SUPPLEMENTS,
     VARS_DICT,
 )
-import data.camme
-
-# * Get data directory folder
-parent_dir = Path(__file__).parents[1]
-data_dir = parent_dir / "data" / "camme"
 
 
 def retrieve_folders(path: Union[str, os.PathLike]) -> Dict[
@@ -103,7 +95,7 @@ def convert_to_year_dataframe(
     """Combine all dataframes into one for all years"""
     df_dict = {}
     for year in dir_dict:
-        # Empty DataFrame for complete year's data
+        # Empty list for DataFrames for complete year's data
         df_complete = []
         cols, new_cols = define_year_columns(year)
         # if isinstance(cols, Generator) is True:
@@ -131,12 +123,18 @@ def convert_to_year_dataframe(
 
 def create_complete_dataframe(dir_dict: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     """Combine dataframes for each year"""
-    # for year,
-    pass
+    # Empty list for DataFrames to fill with all years
+    df_complete = []
+    for df in dir_dict.values():
+        df_complete.append(df)
+    return pd.concat(df_complete, axis=0, ignore_index=True)
 
 
-def main() -> None:
-    """Run script"""
+def preprocess() -> pd.DataFrame:
+    """Create DataFrame with all years' data"""
+    # * Get data directory folder
+    parent_dir = Path(__file__).parents[1]
+    data_dir = parent_dir / "data" / "camme"
     logging.info("Retrieving folders")
     camme_csv_folders = retrieve_folders(data_dir)
     logging.info("Retrieving CSV files")
@@ -148,13 +146,20 @@ def main() -> None:
     dtime = end - start
     logging.info("Elapsed time to convert to DataFrames: %s", dtime)
     ## Elapsed time before change: 11.67s
-    logging.info(dfs["2014"].head())
-    for y, d in dfs.items():
-        logging.info("%s %s", y, d.columns.to_list())
     print(dfs["1989"].head())
     print(dfs["1991"].head())
     print(dfs["2004"].head())
     print(dfs["2021"].head())
+    return create_complete_dataframe(dfs)
+
+
+def main() -> None:
+    """Run script"""
+    df_final = preprocess()
+    print(df_final[df_final["year"] == 2021].head())
+    print(df_final.tail())
+    print(df_final.info())
+    print(df_final.describe().T)
 
 
 if __name__ == "__main__":
