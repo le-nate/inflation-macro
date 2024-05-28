@@ -60,12 +60,28 @@ def test_columns() -> None:
             assert all(item in df.columns.to_list() for item in year_cols)
 
 
+def test_nans() -> None:
+    """Test that DataFrames are not getting improperly converted from CSV"""
+    camme_csv_folders = process_camme.retrieve_folders(test_dir)
+    camme_csv_folders = process_camme.retrieve_csv_files(camme_csv_folders)
+    for year, files in camme_csv_folders.items():
+        year_cols, _ = process_camme.define_year_columns(year)
+        for table in files["csv"]:
+            df = pd.read_csv(table, delimiter=";", encoding="latin-1")
+            # Set columns as lowercase since some apparently are read as having
+            # different cases than in their csv file
+            df.columns = df.columns.str.lower()
+            assert df[year_cols[0]].isnull().all() is False
+
+
 def main() -> None:
     """Run test script"""
     logging.info("Testing file filtering")
     test_filter_files()
     logging.info("Testing column selection")
     test_columns()
+    logging.info("Testing DataFrame generation")
+    test_nans()
     logging.info("CAMME test complete")
 
 
