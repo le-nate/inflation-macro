@@ -3,21 +3,23 @@
 # %%
 import logging
 
-logging.basicConfig(
-    format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
-    datefmt="%H:%M:%S",
-    level="INFO",
-)
-
 import time
 from typing import Dict, List, Union
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 
 from analysis.process_camme import preprocess
 from analysis.retrieve_data import get_fed_data, clean_fed_data
+from analysis.helpers import disable_module_debug_log
+
+# * Logging settings
+logger = logging.getLogger(__name__)
+disable_module_debug_log("warning")
+logger.setLevel(logging.DEBUG)
+
 
 # %%
 df_dict, df_all = preprocess()
@@ -66,12 +68,30 @@ logging.debug(data.shape)
 data.dropna(inplace=True)
 logging.debug(data.shape)
 print(data.head)
+
+# %%
 sns.lineplot(data=data, x="date", y="Value", hue="Measure")
-sns.pairplot(data=data, hue="Measure")
+sns.pairplot(data=data)
 sns.jointplot(
     data=df_combo[["inf_per_val_inc", "inf_exp_val_inc"]],
     x="inf_per_val_inc",
     y="inf_exp_val_inc",
     kind="reg",
 )
+
+# %%
+
+x = data[data["Measure"] == "inf_per_val_inc"]["Value"].to_numpy()
+
+sns.kdeplot(data=data, x="Value", hue="Measure")
+plt.yscale("log")
+plt.xscale("log")
+
+# hist, bin_edges = np.histogram(x, bins=50, density=False)
+# bin_center = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+# plt.figure()
+# plt.hist(x, bins=50, density=False)
+# plt.errorbar(bin_center, hist, yerr=50, fmt=".")
+
 plt.show()
