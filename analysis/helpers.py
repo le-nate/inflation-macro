@@ -3,7 +3,13 @@
 import logging
 from typing import Dict, Generator, List, Union
 
-logging.basicConfig(level="DEBUG")
+
+def disable_module_debug_log(level: str) -> None:
+    """Disable logger ouputs for other modules up to defined `level`"""
+    for log_name in logging.Logger.manager.loggerDict:
+        if log_name != "__name__":
+            log_level = getattr(logging, level.upper())
+            logging.getLogger(log_name).setLevel(log_level)
 
 
 def nested_dict_values(nested_dict: Dict) -> Generator[any, any, any]:
