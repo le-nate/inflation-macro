@@ -80,7 +80,7 @@ def time_scale_regression(
     results = summary_col(
         [res for res in regressions_dict.values()],
         stars=True,
-        model_names=[name for name in regressions_dict],
+        model_names=list(regressions_dict),
     )
     return results
 
