@@ -42,14 +42,14 @@ LEVELS = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]  # Period scale is logarithm
 
 
 # * Functions
-def set_time_range(t_array: npt.NDArray, dt: float) -> Tuple[float, npt.NDArray]:
+def set_time_range(t_array: npt.NDArray, dt: float) -> npt.NDArray:
     """Takes first date and creates array with date based on defined dt"""
     # Define starting time and time step
     t0 = min(t_array)
     logger.debug("t0 type %s", type(t0))
     t0 = t0.astype("datetime64[Y]").astype(int) + 1970
     num_observations = t_array.size
-    return num_observations, np.arange(1, num_observations + 1) * dt + t0
+    return np.arange(1, num_observations + 1) * dt + t0
 
 
 def run_cwt(
@@ -58,7 +58,8 @@ def run_cwt(
     mother_wavelet: Type,
     normalize: bool = True,
 ) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
-    """Conducts Continuous Wavelet Transform"""
+    """Conducts Continuous Wavelet Transform\n
+    Returns power spectrum, period, cone of influence, and significance levels (95%)"""
     # p = np.polyfit(t - t0, dat, 1)
     # dat_notrend = dat - np.polyval(p, t - t0)
     std = y_values.std()  #! dat_notrend.std()  # Standard deviation
@@ -184,11 +185,11 @@ def plot_cwt(
     # * Invert y axis
     cwt_ax.set_ylim(cwt_ax.get_ylim()[::-1])
 
-    Yticks = 2 ** np.arange(
+    y_ticks = 2 ** np.arange(
         np.ceil(np.log2(cwt_period.min())), np.ceil(np.log2(cwt_period.max()))
     )
-    cwt_ax.set_yticks(np.log2(Yticks))
-    cwt_ax.set_yticklabels(Yticks)
+    cwt_ax.set_yticks(np.log2(y_ticks))
+    cwt_ax.set_yticklabels(y_ticks)
     return cwt_ax
 
 
@@ -198,7 +199,7 @@ def main() -> None:
     raw_data = rd.get_fed_data(MEASURE, units="pc1", freqs="m")
     _, t_date, y = rd.clean_fed_data(raw_data)
 
-    _, t = set_time_range(t_date, DT)
+    t = set_time_range(t_date, DT)
 
     power, period, coi, sig95 = run_cwt(t, y, mother_wavelet=MOTHER, normalize=True)
 
