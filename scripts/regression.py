@@ -11,7 +11,13 @@ from statsmodels.graphics.regressionplots import plot_fit
 from statsmodels.iolib.summary2 import summary_col
 
 from scripts import dwt
+from analysis.helpers import define_other_module_log_level
 from analysis import retrieve_data as rd
+
+# * Logging settings
+logger = logging.getLogger(__name__)
+define_other_module_log_level("debug")
+logger.setLevel(logging.DEBUG)
 
 
 def simple_regression(
@@ -502,13 +508,22 @@ def main() -> None:
     print("Descriptive stats for personal durables consumption")
     print(dur_consump.describe())
 
+    # * Durables consumption, monthly
+    raw_data = rd.get_fed_data("PSAVERT")
+    save, _, _ = rd.clean_fed_data(raw_data)
+    save.rename(columns={"value": "savings"}, inplace=True)
+    print("Descriptive stats for personal savings rate")
+    print(save.describe())
+
     # * Merge dataframes to remove extra dates
     df = inf_exp.merge(nondur_consump, how="left")
     df = df.merge(dur_consump, how="left")
+    df = df.merge(save, how="left")
     print(
         f"""Inflation expectations observations: {len(inf_exp)}, \nNon-durables 
         consumption observations: {len(nondur_consump)}, \nDurables 
-        consumption observations: {len(dur_consump)}.\nNew dataframe lengths: {len(df)}"""
+        consumption observations: {len(dur_consump)}, \nSavings
+        observation {len(save)}.\nNew dataframe lengths: {len(df)}"""
     )
     print(df.head(), "\n", df.tail())
 
@@ -516,21 +531,23 @@ def main() -> None:
 
     # * Wavelet decomposition
     t = df["date"].to_numpy()
-    x = df["expectation"].to_numpy()
-    y = df["nondurable"].to_numpy()
-    z = df["durable"].to_numpy()
+    exp = df["expectation"].to_numpy()
+    nondur = df["nondurable"].to_numpy()
+    dur = df["durable"].to_numpy()
+    sav = df["savings"].to_numpy()
 
-    dwt_levels, x_coeffs = dwt.run_dwt(x, MOTHER)
-    print("len coeffs: ", len(x_coeffs), len(x_coeffs[0]), len(x_coeffs[5]))
-    _, y_coeffs = dwt.run_dwt(y, MOTHER, dwt_levels)
-    _, z_coeffs = dwt.run_dwt(z, MOTHER, dwt_levels)
+    dwt_levels, exp_coeffs = dwt.run_dwt(exp, MOTHER)
+    print("len coeffs: ", len(exp_coeffs), len(exp_coeffs[0]), len(exp_coeffs[5]))
+    _, nondur_coeffs = dwt.run_dwt(nondur, MOTHER, dwt_levels)
+    _, dur_coeffs = dwt.run_dwt(dur, MOTHER, dwt_levels)
+    _, sav_coeffs = dwt.run_dwt(sav, MOTHER, dwt_levels)
 
     # * Plot each series component separately
     fig1 = plot_compare_components(
         "expectation",
         "nondurable",
-        x_coeffs,
-        y_coeffs,
+        exp_coeffs,
+        nondur_coeffs,
         t,
         dwt_levels,
         MOTHER,
@@ -540,8 +557,19 @@ def main() -> None:
     fig2 = plot_compare_components(
         "expectation",
         "durable",
-        x_coeffs,
-        z_coeffs,
+        exp_coeffs,
+        dur_coeffs,
+        t,
+        dwt_levels,
+        MOTHER,
+        figsize=(15, 10),
+    )
+
+    fig3 = plot_compare_components(
+        "expectation",
+        "savings",
+        exp_coeffs,
+        sav_coeffs,
         t,
         dwt_levels,
         MOTHER,
@@ -551,7 +579,7 @@ def main() -> None:
     # * Plot initial series
     df_melt = pd.melt(df, ["date"])
     df_melt.rename(columns={"value": "%"}, inplace=True)
-    fig3, (bx) = plt.subplots(1, 1)
+    fig4, (bx) = plt.subplots(1, 1)
     bx = sns.lineplot(data=df_melt, x="date", y="%", hue="variable", ax=bx)
 
     plt.show()

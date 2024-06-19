@@ -1,19 +1,6 @@
 """Script to combine and standardize yearly CAMME responses from separate csv files"""
 
 import logging
-
-# * Logging config
-# logger = logging.getLogger(__name__)
-# LOGNAME = "camme.log"
-# logging.basicConfig(
-#     filename=LOGNAME,
-#     filemode="a",
-#     format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
-#     datefmt="%H:%M:%S",
-#     level=logging.DEBUG,
-# )
-# logger.info("Logs saved to %s", LOGNAME)
-
 import os
 from pathlib import Path
 import time
@@ -21,7 +8,7 @@ from typing import Dict, List, Tuple, Union
 
 import pandas as pd
 
-from analysis.helpers import nested_list_values
+from analysis.helpers import define_other_module_log_level
 from constants.camme import (
     IGNORE_HOUSING,
     IGNORE_HOUSING_YEARS,
@@ -29,8 +16,10 @@ from constants.camme import (
     VARS_DICT,
 )
 
-# * Logging config
-logging.basicConfig(level="INFO")
+# * Logging settings
+logger = logging.getLogger(__name__)
+define_other_module_log_level("debug")
+logger.setLevel(logging.DEBUG)
 
 # * Get data directory folder
 parent_dir = Path(__file__).parents[1]

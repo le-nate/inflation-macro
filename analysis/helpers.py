@@ -1,10 +1,10 @@
 """Cross-project helper functions"""
 
 import logging
-from typing import Dict, Generator, List, Union
+from typing import Dict, Generator, List
 
 
-def disable_module_debug_log(level: str) -> None:
+def define_other_module_log_level(level: str) -> None:
     """Disable logger ouputs for other modules up to defined `level`"""
     for log_name in logging.Logger.manager.loggerDict:
         if log_name != "__name__":

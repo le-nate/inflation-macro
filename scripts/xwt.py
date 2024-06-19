@@ -1,6 +1,9 @@
 """Cross wavelet transformation"""
 
 from __future__ import division
+import logging
+import sys
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.image import NonUniformImage
@@ -8,8 +11,15 @@ import pandas as pd
 import pycwt as wavelet
 from pycwt.helpers import find
 
+from analysis.helpers import define_other_module_log_level
 from analysis import retrieve_data as rd
 from analysis import wavelet_transform as wt
+
+# * Logging settings
+logger = logging.getLogger(__name__)
+define_other_module_log_level("warning")
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 
 
 def main() -> None:
