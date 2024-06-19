@@ -11,7 +11,13 @@ from statsmodels.graphics.regressionplots import plot_fit
 from statsmodels.iolib.summary2 import summary_col
 
 from scripts import dwt
+from analysis.helpers import define_other_module_log_level
 from analysis import retrieve_data as rd
+
+# * Logging settings
+logger = logging.getLogger(__name__)
+define_other_module_log_level("debug")
+logger.setLevel(logging.DEBUG)
 
 
 def simple_regression(

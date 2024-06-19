@@ -2,13 +2,21 @@
 Smoothing of signals via wavelet reconstruction
 """
 
+import logging
+
 import matplotlib.pyplot as plt
 import matplotlib.figure
 import numpy as np
 import numpy.typing as npt
 import pywt
 
+from analysis.helpers import define_other_module_log_level
 from analysis import retrieve_data as rd
+
+# * Logging settings
+logger = logging.getLogger(__name__)
+define_other_module_log_level("debug")
+logger.setLevel(logging.DEBUG)
 
 
 def trim_signal(original_signal: list, reconstructed: list) -> list:

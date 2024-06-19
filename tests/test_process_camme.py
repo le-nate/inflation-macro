@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple, Union
 
 import pandas as pd
 
-from analysis.helpers import nested_dict_values, nested_list_values
+from analysis.helpers import define_other_module_log_level
 import analysis.process_camme as process_camme
 from constants.camme import (
     IGNORE_HOUSING,
@@ -18,8 +18,10 @@ from constants.camme import (
     VARS_DICT,
 )
 
-# * Logging config
-logging.basicConfig(level="DEBUG")
+# * Logging settings
+logger = logging.getLogger(__name__)
+define_other_module_log_level("debug")
+logger.setLevel(logging.DEBUG)
 
 test_dir = process_camme.data_dir
 

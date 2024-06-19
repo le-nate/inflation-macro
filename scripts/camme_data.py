@@ -13,11 +13,11 @@ import seaborn as sns
 
 from analysis.process_camme import preprocess
 from analysis.retrieve_data import get_fed_data, clean_fed_data
-from analysis.helpers import disable_module_debug_log
+from analysis.helpers import define_other_module_log_level
 
 # * Logging settings
 logger = logging.getLogger(__name__)
-disable_module_debug_log("warning")
+define_other_module_log_level("warning")
 logger.setLevel(logging.DEBUG)
 
 
