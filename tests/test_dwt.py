@@ -6,9 +6,9 @@ import logging
 import numpy as np
 import pywt
 
-from scripts import dwt
-from analysis.helpers import define_other_module_log_level
-from analysis import retrieve_data as rd
+from src import dwt
+from src.helpers import define_other_module_log_level
+from src import retrieve_data as rd
 from scripts import simulation_consumption as sim
 
 # * Logging settings

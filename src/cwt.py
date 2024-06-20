@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 import pycwt as wavelet
 from pycwt.helpers import find
 
-from analysis.helpers import define_other_module_log_level
-from analysis import retrieve_data as rd
+from helpers import define_other_module_log_level
+import retrieve_data
 
 # * Logging settings
 logger = logging.getLogger(__name__)
@@ -196,8 +196,8 @@ def plot_cwt(
 def main() -> None:
     """Run script"""
     # * Retrieve dataset
-    raw_data = rd.get_fed_data(MEASURE, units="pc1", freqs="m")
-    _, t_date, y = rd.clean_fed_data(raw_data)
+    raw_data = retrieve_data.get_fed_data(MEASURE, units="pc1", freqs="m")
+    _, t_date, y = retrieve_data.clean_fed_data(raw_data)
 
     t = set_time_range(t_date, DT)
 

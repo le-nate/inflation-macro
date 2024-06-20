@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pywt
 
-from analysis import retrieve_data as rd
+from src import retrieve_data as rd
 
 WAVELET_WIDTH = np.arange(1, 64)  # np.geomspace(1, 16, num=4)
 WAVELET = "morl"

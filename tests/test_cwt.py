@@ -12,9 +12,9 @@ import matplotlib.pyplot as plt
 import pycwt as wavelet
 from pycwt.helpers import find
 
-from analysis.helpers import define_other_module_log_level
-from analysis import retrieve_data as rd
-from scripts.cwt import set_time_range, run_cwt
+from src.helpers import define_other_module_log_level
+from src import retrieve_data as rd
+from src.cwt import set_time_range, run_cwt
 
 # * Logging settings
 logger = logging.getLogger(__name__)

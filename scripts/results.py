@@ -2,18 +2,20 @@
 
 # %%
 import logging
+import sys
 
 import matplotlib.pyplot as plt
 import pywt
 
 from scripts.dwt import smooth_signal
-from analysis.helpers import define_other_module_log_level
-from analysis import retrieve_data as rd
+from src.helpers import define_other_module_log_level
+from src import retrieve_data as rd
 
 # * Logging settings
 logger = logging.getLogger(__name__)
 define_other_module_log_level("debug")
 logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 
 ## Matplotlib Settings
 

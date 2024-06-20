@@ -11,9 +11,9 @@ import pandas as pd
 import pycwt as wavelet
 from pycwt.helpers import find
 
-from analysis.helpers import define_other_module_log_level
-from analysis import retrieve_data as rd
-from analysis import wavelet_transform as wt
+from src.helpers import define_other_module_log_level
+from src import retrieve_data as rd
+from src import wavelet_transform as wt
 
 # * Logging settings
 logger = logging.getLogger(__name__)

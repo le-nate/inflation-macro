@@ -10,8 +10,8 @@ import numpy as np
 import numpy.typing as npt
 import pywt
 
-from analysis.helpers import define_other_module_log_level
-from analysis import retrieve_data as rd
+from src.helpers import define_other_module_log_level
+from src import retrieve_data as rd
 
 # * Logging settings
 logger = logging.getLogger(__name__)

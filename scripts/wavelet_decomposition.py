@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pywt
 
-from analysis import retrieve_data as rd
+from src import retrieve_data as rd
 
 ## Matplotlib Settings
 

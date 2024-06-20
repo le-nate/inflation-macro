@@ -13,7 +13,7 @@ import matplotlib.dates as mdates
 import pycwt as wavelet
 from pycwt.helpers import find
 
-from analysis import retrieve_data as rd
+from src import retrieve_data as rd
 
 ## Load dataset
 MEASURE = "CPIAUCSL"
