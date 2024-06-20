@@ -12,8 +12,8 @@ import pycwt as wavelet
 from pycwt.helpers import find
 
 from src.helpers import define_other_module_log_level
-from src import retrieve_data as rd
-from src import wavelet_transform as wt
+from src import retrieve_data
+from src import wavelet_helpers
 
 # * Logging settings
 logger = logging.getLogger(__name__)
@@ -27,22 +27,22 @@ def main() -> None:
 
     # * Load dataset
     measure_1 = "MICH"
-    raw_data = rd.get_fed_data(measure_1)
-    df1, _, _ = rd.clean_fed_data(raw_data)
+    raw_data = retrieve_data.get_fed_data(measure_1)
+    df1, _, _ = retrieve_data.clean_fed_data(raw_data)
 
     measure_2 = "PCEDG"
-    raw_data = rd.get_fed_data(measure_2, units="pc1")
-    df2, _, _ = rd.clean_fed_data(raw_data)
+    raw_data = retrieve_data.get_fed_data(measure_2, units="pc1")
+    df2, _, _ = retrieve_data.clean_fed_data(raw_data)
 
     # measure_1 = "000857180"
-    # raw_data = rd.get_insee_data(measure_1)
-    # df1, _, _ = rd.clean_insee_data(raw_data)
+    # raw_data = retrieve_data.get_insee_data(measure_1)
+    # df1, _, _ = retrieve_data.clean_insee_data(raw_data)
     # print(df1.head())
     # print(df1.tail())
 
     # measure_2 = "000857181"
-    # raw_data = rd.get_insee_data(measure_2)
-    # df2, _, _ = rd.clean_insee_data(raw_data)
+    # raw_data = retrieve_data.get_insee_data(measure_2)
+    # df2, _, _ = retrieve_data.clean_insee_data(raw_data)
     # print(df2.head())
     # print(df2.tail())
 
@@ -63,8 +63,8 @@ def main() -> None:
     # std = y2.std()  #! dat_notrend.std()  # Standard deviation
     # var2 = std**2  # Variance
     # y2 = y2 / std  #! dat_notrend / std  # Normalized dataset
-    y1 = wt.standardize_data_for_xwt(y1, detrend=False, remove_mean=True)
-    y2 = wt.standardize_data_for_xwt(y2, detrend=False, remove_mean=True)
+    y1 = wavelet_helpers.standardize_data_for_xwt(y1, detrend=False, remove_mean=True)
+    y2 = wavelet_helpers.standardize_data_for_xwt(y2, detrend=False, remove_mean=True)
 
     # *Prepare variables
     dt = 1 / 12
@@ -80,7 +80,7 @@ def main() -> None:
     # * Normalize results
     signal_size = y1.size
     levels = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
-    period, power, sig95, coi_plot = wt.normalize_xwt_results(
+    period, power, sig95, coi_plot = wavelet_helpers.normalize_xwt_results(
         signal_size, xwt_result, coi, np.log2(levels[2]), freqs, signif
     )
 
