@@ -144,8 +144,8 @@ def reconstruct_signal_component(
 
 def plot_smoothing(
     smooth_signals: dict,
-    x: npt.NDArray,
-    y: npt.NDArray,
+    original_t: npt.NDArray,
+    original_y: npt.NDArray,
     ascending: bool = False,
     **kwargs,
 ) -> Tuple[matplotlib.figure.Figure, str]:
@@ -153,10 +153,10 @@ def plot_smoothing(
 
     # * Input name of time series
     name = input("Enter name of time series (to be included in plot)")
-    while isinstance(name) is not str:
+    while isinstance(name, str) is False:
         input("Please enter a name as text")
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=kwargs["figsize"])
     # * Loop through levels and add detail level components
     if ascending:
         order = reversed(list(smooth_signals.items()))
@@ -166,8 +166,8 @@ def plot_smoothing(
         smooth_level = len(smooth_signals) - level
         ## Subplot for each smooth signal
         plt.subplot(len(smooth_signals), 1, i)
-        plt.plot(x, y, label=name.title())
-        plt.plot(x, signal["signal"])
+        plt.plot(original_t, original_y, label=name.title())
+        plt.plot(original_t, signal["signal"])
         plt.xlabel("Year")
         plt.grid()
         plt.title(rf"Approximation: $S_{{j-{smooth_level}}}$")
@@ -188,7 +188,7 @@ def main() -> None:
     results_from_dwt = smooth_signal(data_for_dwt)
 
     fig, fig_title = plot_smoothing(
-        results_from_dwt.smoothed_signal_dict, x=t, y=y, figsize=(10, 10)
+        results_from_dwt.smoothed_signal_dict, t, y, figsize=(10, 10)
     )
 
     plt.xlabel("Year")
