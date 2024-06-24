@@ -2,7 +2,10 @@
 Smoothing of signals via wavelet reconstruction
 """
 
+from dataclasses import dataclass
 import logging
+import sys
+from typing import Dict, Generator, List, Tuple, Type, Union
 
 import matplotlib.pyplot as plt
 import matplotlib.figure
@@ -11,35 +14,37 @@ import numpy.typing as npt
 import pywt
 
 from src.helpers import define_other_module_log_level
-from src import retrieve_data as rd
+from src import retrieve_data
 
 # * Logging settings
 logger = logging.getLogger(__name__)
 define_other_module_log_level("debug")
 logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 
 
-def trim_signal(original_signal: list, reconstructed: list) -> list:
+def trim_signal(
+    original_signal: npt.NDArray, reconstructed: npt.NDArray
+) -> npt.NDArray:
     """Removes first or last observation for odd-numbered datasets"""
     ## Time series with uneven result in mismatched lengths with the reconstructed
     ## signal, so we remove a value from the approximated signal
     if len(reconstructed) % 2 != 0:
-        print(
+        trim = input(
             f"""Odd number of observations dectected (Length: {len(original_signal)}).
              Trim data? (y/n)"""
         )
-        trim = input()
+        while trim not in ["y", "n"]:
+            trim = input("Please respond with either 'y' or 'n'")
         if trim == "y":
-            print("Trim beginning or end of time series? (b/e)")
-            trim2 = input()
+            trim2 = input("Trim beginning or end of time series? (b/e)")
+            while trim2 not in ["b", "e"]:
+                trim2 = input("Please respond with either 'b' or 'e'")
             if trim2 == "b":
-                reconstructed = reconstructed[1:]
-                return reconstructed
-            elif trim2 == "e":
-                reconstructed = reconstructed[:-1]
-                return reconstructed
+                return reconstructed[1:]
+            return reconstructed[1:]
     else:
-        return reconstructed
+        return reconstructed[:]
 
 
 def run_dwt(
@@ -64,7 +69,7 @@ def run_dwt(
 
 def smooth_signal(
     signal: npt.NDArray, wavelet: str, levels: int = None
-) -> tuple[dict, int]:
+) -> Tuple[dict, int]:
     """Generate smoothed signals based off wavelet coefficients for each pre-defined level"""
     ## Initialize dict for reconstructed signals
     signals_dict = {}
@@ -146,8 +151,8 @@ def main() -> None:
     # plt.rc("legend", fontsize=small_size)  # legend fontsize
     # plt.rc("figure", titlesize=bigger_size)  # fontsize of the figure title
 
-    raw_data = rd.get_insee_data("000857180")
-    _, t, y = rd.clean_insee_data(raw_data)
+    raw_data = retrieve_data.get_insee_data("000857180")
+    _, t, y = retrieve_data.clean_insee_data(raw_data)
 
     ## Define the wavelet type
     wavelet_type = "sym12"
