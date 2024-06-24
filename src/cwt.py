@@ -93,28 +93,26 @@ class ResultsFromCWT:
 
 # * Functions
 def run_cwt(
-    t_values: npt.NDArray,
-    y_values: npt.NDArray,
-    mother_wavelet: Type,
+    cwt_data: Type[DataForCWT],
     normalize: bool = True,
-) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+) -> Type[ResultsFromCWT]:
     """Conducts Continuous Wavelet Transform\n
     Returns power spectrum, period, cone of influence, and significance levels (95%)"""
     # p = np.polyfit(t - t0, dat, 1)
     # dat_notrend = dat - np.polyval(p, t - t0)
-    std = y_values.std()  #! dat_notrend.std()  # Standard deviation
+    std = cwt_data.y_values.std()  #! dat_notrend.std()  # Standard deviation
 
     if normalize:
-        dat_norm = y_values / std  #! dat_notrend / std  # Normalized dataset
+        dat_norm = cwt_data.y_values / std  #! dat_notrend / std  # Normalized dataset
     else:
-        dat_norm = y_values
+        dat_norm = cwt_data.y_values
 
-    alpha, _, _ = wavelet.ar1(y_values)  # Lag-1 autocorrelation for red noise
+    alpha, _, _ = wavelet.ar1(cwt_data.y_values)  # Lag-1 autocorrelation for red noise
 
     # * Conduct transformations
     # Wavelet transform
     wave, scales, freqs, cwt_coi, _, _ = wavelet.cwt(
-        dat_norm, DT, DJ, S0, J, mother_wavelet
+        dat_norm, DT, DJ, S0, J, cwt_data.mother_wavelet
     )
     # Normalized wavelet power spectrum
     cwt_power = (np.abs(wave)) ** 2
@@ -123,9 +121,15 @@ def run_cwt(
 
     # * Statistical significance
     # where the ratio ``cwt_power / sig95 > 1``.
-    num_observations = len(t_values)
+    num_observations = len(cwt_data.t_values)
     signif, _ = wavelet.significance(
-        1.0, DT, scales, 0, alpha, significance_level=0.95, wavelet=mother_wavelet
+        1.0,
+        DT,
+        scales,
+        0,
+        alpha,
+        significance_level=0.95,
+        wavelet=cwt_data.mother_wavelet,
     )
     cwt_sig95 = np.ones([1, num_observations]) * signif[:, None]
     cwt_sig95 = cwt_power / cwt_sig95
@@ -133,109 +137,54 @@ def run_cwt(
     return ResultsFromCWT(cwt_power, cwt_period, cwt_sig95, cwt_coi)
 
 
-def plot_signficance_levels(
-    cwt_ax: plt.Axes,
-    signficance_levels: npt.NDArray,
-    t_values: npt.NDArray,
-    cwt_period: npt.NDArray,
-    **kwargs
-) -> None:
-    """Plot contours for 95% significance level"""
-    extent = [t_values.min(), t_values.max(), 0, max(cwt_period)]
-    cwt_ax.contour(
-        t_values,
-        np.log2(cwt_period),
-        signficance_levels,
-        [-99, 1],
-        colors=kwargs["colors"],
-        linewidths=kwargs["linewidths"],
-        extent=extent,
-    )
-
-
-def plot_cone_of_influence(
-    cwt_ax: plt.Axes,
-    cwt_coi: npt.NDArray,
-    t_values: npt.NDArray,
-    levels: List[float],
-    cwt_period: npt.NDArray,
-    **kwargs
-) -> None:
-    """Plot shaded area for cone of influence, where edge effects may occur"""
-    alpha = kwargs["alpha"]
-    hatch = kwargs["hatch"]
-    cwt_ax.fill(
-        np.concatenate(
-            [
-                t_values,
-                t_values[-1:] + DT,
-                t_values[-1:] + DT,
-                t_values[:1] - DT,
-                t_values[:1] - DT,
-            ]
-        ),
-        np.concatenate(
-            [
-                np.log2(cwt_coi),
-                [levels[2]],
-                np.log2(cwt_period[-1:]),
-                np.log2(cwt_period[-1:]),
-                [levels[2]],
-            ]
-        ).clip(
-            min=-2.5
-        ),  # ! To keep cone of influence from bleeding off graph
-        "k",
-        alpha=alpha,
-        hatch=hatch,
-    )
-
-
 def plot_cwt(
     cwt_ax: plt.Axes,
-    t_values: npt.NDArray,
-    cwt_power: npt.NDArray,
-    cwt_period: npt.NDArray,
-    levels: List[float],
+    cwt_data: Type[DataForCWT],
+    cwt_results: Type[ResultsFromCWT],
     include_significance: bool = True,
     include_cone_of_influence: bool = True,
     **kwargs
-) -> plt.Axes:
+) -> None:
     """Plot Power Spectrum for Continuous Wavelet Transform"""
-    power_spec = cwt_ax.contourf(
-        t_values,
-        np.log2(cwt_period),
-        np.log2(cwt_power),
-        np.log2(levels),
+    _ = cwt_ax.contourf(
+        cwt_data.time_range,
+        np.log2(cwt_results.period),
+        np.log2(cwt_results.power),
+        np.log2(cwt_data.levels),
         extend="both",
-        cmap="jet",
+        cmap=kwargs["cmap"],
     )
 
     if include_significance:
         plot_signficance_levels(
-            cwt_ax, kwargs["cwt_sig95"], t_values, cwt_period, **kwargs
+            cwt_ax,
+            cwt_results.significance_levels,
+            cwt_data.time_range,
+            cwt_results.period,
+            **kwargs,
         )
 
     if include_cone_of_influence:
         plot_cone_of_influence(
-            cwt_ax=cwt_ax,
-            t_values=t_values,
-            cwt_period=cwt_period,
-            levels=levels,
-            cwt_coi=kwargs["cwt_coi"],
-            alpha=kwargs["alpha"],
-            hatch=kwargs["hatch"],
+            cwt_ax,
+            cwt_results.coi,
+            cwt_data.time_range,
+            cwt_data.levels,
+            cwt_results.period,
+            cwt_data.delta_t,
+            tranform_type="cwt",
+            **kwargs,
         )
 
     # * Invert y axis
     cwt_ax.set_ylim(cwt_ax.get_ylim()[::-1])
 
     y_ticks = 2 ** np.arange(
-        np.ceil(np.log2(cwt_period.min())), np.ceil(np.log2(cwt_period.max()))
+        np.ceil(np.log2(cwt_results.period.min())),
+        np.ceil(np.log2(cwt_results.period.max())),
     )
     cwt_ax.set_yticks(np.log2(y_ticks))
     cwt_ax.set_yticklabels(y_ticks)
-    return cwt_ax
 
 
 def main() -> None:
@@ -246,35 +195,24 @@ def main() -> None:
 
     data_for_cwt = DataForCWT(t_date, y, MOTHER, DT, DJ, S0, LEVELS)
 
-    results_from_cwt = run_cwt(
-        data_for_cwt.time_range,
-        data_for_cwt.y_values,
-        mother_wavelet=data_for_cwt.mother_wavelet,
-        normalize=True,
-    )
+    results_from_cwt = run_cwt(data_for_cwt, normalize=True)
 
     # * Plot results
     plt.close("all")
     # plt.ioff()
     figprops = {"figsize": (20, 10), "dpi": 72}
-    fig, ax = plt.subplots(1, 1, **figprops)
+    _, ax = plt.subplots(1, 1, **figprops)
 
+    # * Add plot features
     cwt_plot_props = {
-        "cwt_sig95": results_from_cwt.significance_levels,
-        "cwt_coi": results_from_cwt.coi,
-        "colors": "k",
-        "linewidths": 3,
-        "alpha": 0.3,
-        "hatch": "--",
+        "cmap": "jet",
+        "sig_colors": "k",
+        "sig_linewidths": 2,
+        "coi_color": "k",
+        "coi_alpha": 0.3,
+        "coi_hatch": "--",
     }
-    power_spec = plot_cwt(
-        ax,
-        data_for_cwt.time_range,
-        results_from_cwt.power,
-        results_from_cwt.period,
-        data_for_cwt.levels,
-        **cwt_plot_props
-    )
+    plot_cwt(ax, data_for_cwt, results_from_cwt, data_for_cwt, **cwt_plot_props)
 
     # * Set labels/title
     ax.set_xlabel("")
