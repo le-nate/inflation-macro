@@ -12,7 +12,11 @@ import matplotlib.pyplot as plt
 import pycwt as wavelet
 from pycwt.helpers import find
 
-from src.helpers import define_other_module_log_level
+from src.helpers import (
+    define_other_module_log_level,
+    plot_cone_of_influence,
+    plot_signficance_levels,
+)
 from src import retrieve_data
 from src import wavelet_helpers
 
@@ -50,6 +54,7 @@ class DataForXWT(object):
         initial_scale: float,
         levels: List[float],
     ) -> None:
+        self.t_values = np.linspace(1, y1_values.size + 1, y1_values.size)
         self.y1_values = y1_values
         self.y2_values = y2_values
         self.mother_wavelet = mother_wavelet
@@ -159,6 +164,114 @@ def calculate_phase_difference(
     return xwt_u, xwt_v
 
 
+def plot_xwt(
+    xwt_ax: plt.Axes,
+    xwt_data: Type[DataForXWT],
+    xwt_results: Type[ResultsFromXWT],
+    include_significance: bool = True,
+    include_cone_of_influence: bool = True,
+    include_phase_difference: bool = True,
+    **kwargs,
+) -> None:
+    """Plot Cross-Wavelet Power Spectrum of two series\n
+    **kwargs**\n
+    For power sprectrum: `cmap="jet"`\n
+    For significance levels: `sig_colors="k"`, `sig_linewidths=2`\n
+    For cone of influence: `coi_color="k"`, `coi_alpha=0.3`, `coi_hatch="--"`\n
+    For phase difference: `phase_diff_units="width"`, `phase_diff_angles="uv"`,
+    `phase_diff_pivot="mid"`,`phase_diff_linewidth=0.5`, `phase_diff_edgecolor="k"`,
+    `phase_diff_alpha=0.7`"""
+    extent = [
+        min(xwt_data.t_values),
+        max(xwt_data.t_values),
+        min(xwt_results.coi),
+        max(xwt_results.period),
+    ]
+
+    # * Normalized XWT power spectrum
+    xwt_ax.contourf(
+        xwt_data.t_values,
+        np.log2(xwt_results.period),
+        np.log2(xwt_results.power),
+        np.log2(xwt_data.levels),
+        extend="both",
+        cmap=kwargs["cmap"],
+        extent=extent,
+    )
+
+    # * Add XWT power spectrum features
+    if include_significance:
+        ## Plot significance level contours
+        plot_signficance_levels(
+            xwt_ax,
+            xwt_results.significance_levels,
+            xwt_data.t_values,
+            xwt_results.period,
+            colors=kwargs["sig_colors"],
+            linewidths=kwargs["sig_linewidths"],
+        )
+    if include_cone_of_influence:
+        ## Plot cone of influence
+        plot_cone_of_influence(
+            xwt_ax,
+            xwt_results.coi,
+            xwt_data.t_values,
+            xwt_data.levels,
+            xwt_results.period,
+            xwt_data.delta_t,
+            tranform_type="xwt",
+            color=kwargs["coi_color"],
+            alpha=kwargs["coi_alpha"],
+            hatch=kwargs["coi_hatch"],
+        )
+    if include_phase_difference:
+        ## Plot phase difference indicator vector arrows
+        plot_phase_difference(
+            xwt_ax,
+            xwt_data.t_values,
+            xwt_results.period,
+            xwt_results.phase_diff_u,
+            xwt_results.phase_diff_v,
+            units=kwargs["phase_diff_units"],
+            angles=kwargs["phase_diff_angles"],
+            pivot=kwargs["phase_diff_pivot"],
+            linewidth=kwargs["phase_diff_linewidth"],
+            edgecolor=kwargs["phase_diff_edgecolor"],
+            alpha=kwargs["phase_diff_alpha"],
+        )
+
+
+def plot_phase_difference(
+    xwt_ax: plt.Axes,
+    t_values: npt.NDArray,
+    period: npt.NDArray,
+    phase_diff_u: npt.NDArray,
+    phase_diff_v: npt.NDArray,
+    **kwargs,
+) -> None:
+    """Plot shaded area for cone of influence, where edge effects may occur\n
+    **kwargs**\n
+    `units=`: "width"\n
+    `angles=`: "uv"\n
+    `pivot=`: "mid"\n
+    `linewidth=`: 0.5\n
+    `edgecolor=`: "k"\n
+    `alpha=`: 0.7"""
+    print(kwargs["angles"])
+    xwt_ax.quiver(
+        t_values[::12],
+        np.log2(period[::8]),
+        phase_diff_u[::12, ::12],
+        phase_diff_v[::12, ::12],
+        units=kwargs["units"],
+        angles=kwargs["angles"],
+        pivot=kwargs["pivot"],
+        linewidth=kwargs["linewidth"],
+        edgecolor=kwargs["edgecolor"],
+        alpha=kwargs["alpha"],
+    )
+
+
 def main() -> None:
     """Run script"""
 
@@ -204,142 +317,36 @@ def main() -> None:
 
     results_from_xwt = run_xwt(xwt_data, ignore_strong_trends=False)
 
-    # # *Prepare variables
-    # dt = 1 / 12
-    # dj = 1 / 8
-    # s0 = 2 * dt
-    # mother = wavelet.Morlet(6)  # Morlet wavelet with :math:`\omega_0=6`.
-
-    # # * Perform cross wavelet transform
-    # xwt_result, coi, freqs, signif = wavelet.xwt(
-    #     y1, y2, dt=dt, dj=dj, s0=s0, wavelet=mother, ignore_strong_trends=False
-    # )
-
-    # # * Normalize results
-    # signal_size = y1.size
-    # levels = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
-    # period, power, sig95, coi_plot = wavelet_helpers.normalize_xwt_results(
-    #     signal_size, xwt_result, coi, np.log2(levels[2]), freqs, signif
-    # )
-
-    # # * Caclulate wavelet coherence
-    # _, phase, _, _, _ = wavelet.wct(
-    #     y1,
-    #     y2,
-    #     dt,
-    #     dj=1 / 12,
-    #     s0=-1,
-    #     J=-1,
-    #     sig=False,  #! To save time
-    #     # significance_level=0.8646,
-    #     wavelet="morlet",
-    #     normalize=True,
-    #     cache=True,
-    # )
-
-    # # * Calculate phase
-    # # Calculates the phase between both time series. The phase arrows in the
-    # # cross wavelet power spectrum rotate clockwise with 'north' origin.
-    # # The relative phase relationship convention is the same as adopted
-    # # by Torrence and Webster (1999), where in phase signals point
-    # # upwards (N), anti-phase signals point downwards (S). If X leads Y,
-    # # arrows point to the right (E) and if X lags Y, arrow points to the
-    # # left (W).
-    # angle = 0.5 * np.pi - phase
-    # u, v = np.cos(angle), np.sin(angle)
-    logger.debug(
-        "Comparing length of phase arrays: %s, %s",
-        len(results_from_xwt.phase_diff_u),
-        len(results_from_xwt.phase_diff_v),
-    )
-
     # * Plot results
     print(dfcombo.head())
     print(dfcombo.info())
 
     # * Plot XWT power spectrum
-    fig, (ax) = plt.subplots(1, 1, figsize=(10, 8), sharex=True)
+    _, ax = plt.subplots(1, 1, figsize=(10, 8), sharex=True)
 
-    # Plot XWT
-    extent = [
-        min(t),
-        max(t),
-        min(results_from_xwt.coi),
-        max(results_from_xwt.period),
-    ]
-
-    # Normalized cwt power spectrum
-    ax.contourf(
-        t,
-        np.log2(results_from_xwt.period),
-        np.log2(results_from_xwt.power),
-        np.log2(xwt_data.levels),
-        extend="both",
+    plot_xwt(
+        ax,
+        xwt_data,
+        results_from_xwt,
+        include_significance=True,
+        include_cone_of_influence=True,
+        include_phase_difference=True,
         cmap="jet",
-        extent=extent,
-    )
-
-    # Plot signifance levels
-    ax.contour(
-        t,
-        np.log2(results_from_xwt.period),
-        results_from_xwt.significance_levels,
-        [-99, 1],
-        colors="k",
-        linewidths=2,
-        extent=extent,
-    )
-    # Plot coi
-    ax.fill(
-        np.concatenate(
-            [
-                t,
-                t[-1:] + xwt_data.delta_t,
-                t[-1:] + xwt_data.delta_t,
-                t[:1] - xwt_data.delta_t,
-                t[:1] - xwt_data.delta_t,
-            ]
-        ),
-        results_from_xwt.coi,
-        "k",
-        alpha=0.3,
-        hatch="--",
-    )
-    print(
-        t[::12].shape,
-        np.log2(results_from_xwt.period[::8]).shape,
-        results_from_xwt.phase_diff_u[::12, ::12].shape,
-        results_from_xwt.phase_diff_v[::12, ::12].shape,
-    )
-    # * Plot phase difference arrows
-    ax.quiver(
-        t[::12],
-        np.log2(results_from_xwt.period[::8]),
-        results_from_xwt.phase_diff_u[::12, ::12],
-        results_from_xwt.phase_diff_v[::12, ::12],
-        units="width",
-        angles="uv",
-        pivot="mid",
-        linewidth=0.5,
-        edgecolor="k",
-        alpha=0.7,
-        # headwidth=2,
-        # headlength=2,
-        # headaxislength=1,
-        # minshaft=0.2,
-        # minlength=0.5,
+        sig_colors="k",
+        sig_linewidths=2,
+        coi_color="k",
+        coi_alpha=0.3,
+        coi_hatch="--",
+        phase_diff_units="width",
+        phase_diff_angles="uv",
+        phase_diff_pivot="mid",
+        phase_diff_linewidth=0.5,
+        phase_diff_edgecolor="k",
+        phase_diff_alpha=0.7,
     )
 
     # * Invert y axis
     ax.set_ylim(ax.get_ylim()[::-1])
-
-    # # * Set x axis tick labels
-    # start = dfcombo["date"].dt.year.iat[0]
-    # end = dfcombo["date"].dt.year.iat[len(dfcombo) - 1]
-    # print(start, end)
-    # x_ticks = np.arange(start, end, 6)
-    # # ax.set_xticks(x_ticks)
-    # ax.set_xticklabels(x_ticks)
 
     # * Set y axis tick labels
     y_ticks = 2 ** np.arange(
