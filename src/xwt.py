@@ -1,16 +1,15 @@
 """Cross wavelet transformation"""
 
 from __future__ import division
+from dataclasses import dataclass
 import logging
 import sys
-from dataclasses import dataclass
-from typing import Dict, Generator, List, Tuple, Type, Union
+from typing import List, Tuple, Type
 
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
 import pycwt as wavelet
-from pycwt.helpers import find
 
 from src.helpers import define_other_module_log_level
 from src import retrieve_data
