@@ -37,7 +37,7 @@ LEVELS = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
 
 
 @dataclass
-class CrossWaveletTransform(object):
+class DataForXWT(object):
     """Holds data for XWT"""
 
     def __init__(
@@ -59,11 +59,32 @@ class CrossWaveletTransform(object):
         self.levels = levels
 
 
+@dataclass
+class ResultsFromXWT(object):
+    """Holds results from Cross-Wavelet Transform"""
+
+    def __init__(
+        self,
+        power: npt.NDArray,
+        period: npt.NDArray,
+        significance_levels: npt.NDArray,
+        coi: npt.NDArray,
+        phase_diff_u: npt.NDArray,
+        phase_diff_v: npt.NDArray,
+    ) -> None:
+        self.power = power
+        self.period = period
+        self.significance_levels = significance_levels
+        self.coi = coi
+        self.phase_diff_u = phase_diff_u
+        self.phase_diff_v = phase_diff_v
+
+
 def run_xwt(
-    cross_wavelet_transform: Type[CrossWaveletTransform],
+    cross_wavelet_transform: Type[DataForXWT],
     ignore_strong_trends: bool = False,
     normalize: bool = True,
-) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+) -> Type[ResultsFromXWT]:
     """Conduct Cross-Wavelet Transformation on two series.\n
     Returns cross-wavelet power, period, significance levels, cone of influence,
     and phase"""
@@ -119,7 +140,7 @@ def run_xwt(
     # * Calculate phase difference
     phase_diff_u, phase_diff_v = calculate_phase_difference(phase)
 
-    return (xwt_result, period, sig95, coi_plot, phase_diff_u, phase_diff_v)
+    return ResultsFromXWT(power, period, sig95, coi_plot, phase_diff_u, phase_diff_v)
 
 
 def calculate_phase_difference(
@@ -171,7 +192,7 @@ def main() -> None:
 
     mother_xwt = MOTHER_DICT[MOTHER]
 
-    xwt_data = CrossWaveletTransform(
+    xwt_data = DataForXWT(
         y1,
         y2,
         mother_xwt,
@@ -181,14 +202,7 @@ def main() -> None:
         LEVELS,
     )
 
-    (
-        xwt_power,
-        xwt_period,
-        xwt_sig95,
-        xwt_coi_plot,
-        xwt_phase_diff_u,
-        xwt_phase_diff_v,
-    ) = run_xwt(xwt_data, ignore_strong_trends=False)
+    results_from_xwt = run_xwt(xwt_data, ignore_strong_trends=False)
 
     # # *Prepare variables
     # dt = 1 / 12
@@ -235,8 +249,8 @@ def main() -> None:
     # u, v = np.cos(angle), np.sin(angle)
     logger.debug(
         "Comparing length of phase arrays: %s, %s",
-        len(xwt_phase_diff_u),
-        len(xwt_phase_diff_v),
+        len(results_from_xwt.phase_diff_u),
+        len(results_from_xwt.phase_diff_v),
     )
 
     # * Plot results
@@ -247,13 +261,18 @@ def main() -> None:
     fig, (ax) = plt.subplots(1, 1, figsize=(10, 8), sharex=True)
 
     # Plot XWT
-    extent = [min(t), max(t), min(xwt_coi_plot), max(xwt_period)]
+    extent = [
+        min(t),
+        max(t),
+        min(results_from_xwt.coi),
+        max(results_from_xwt.period),
+    ]
 
     # Normalized cwt power spectrum
     ax.contourf(
         t,
-        np.log2(xwt_period),
-        np.log2(xwt_power),
+        np.log2(results_from_xwt.period),
+        np.log2(results_from_xwt.power),
         np.log2(xwt_data.levels),
         extend="both",
         cmap="jet",
@@ -263,8 +282,8 @@ def main() -> None:
     # Plot signifance levels
     ax.contour(
         t,
-        np.log2(xwt_period),
-        xwt_sig95,
+        np.log2(results_from_xwt.period),
+        results_from_xwt.significance_levels,
         [-99, 1],
         colors="k",
         linewidths=2,
@@ -281,23 +300,23 @@ def main() -> None:
                 t[:1] - xwt_data.delta_t,
             ]
         ),
-        xwt_coi_plot,
+        results_from_xwt.coi,
         "k",
         alpha=0.3,
         hatch="--",
     )
     print(
         t[::12].shape,
-        np.log2(xwt_period[::8]).shape,
-        xwt_phase_diff_u[::12, ::12].shape,
-        xwt_phase_diff_v[::12, ::12].shape,
+        np.log2(results_from_xwt.period[::8]).shape,
+        results_from_xwt.phase_diff_u[::12, ::12].shape,
+        results_from_xwt.phase_diff_v[::12, ::12].shape,
     )
     # * Plot phase difference arrows
     ax.quiver(
         t[::12],
-        np.log2(xwt_period[::8]),
-        xwt_phase_diff_u[::12, ::12],
-        xwt_phase_diff_v[::12, ::12],
+        np.log2(results_from_xwt.period[::8]),
+        results_from_xwt.phase_diff_u[::12, ::12],
+        results_from_xwt.phase_diff_v[::12, ::12],
         units="width",
         angles="uv",
         pivot="mid",
@@ -324,7 +343,8 @@ def main() -> None:
 
     # * Set y axis tick labels
     y_ticks = 2 ** np.arange(
-        np.ceil(np.log2(xwt_period.min())), np.ceil(np.log2(xwt_period.max()))
+        np.ceil(np.log2(results_from_xwt.period.min())),
+        np.ceil(np.log2(results_from_xwt.period.max())),
     )
     ax.set_yticks(np.log2(y_ticks))
     ax.set_yticklabels(y_ticks)
