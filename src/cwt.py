@@ -6,6 +6,7 @@ based off: https://pycwt.reaDThedocs.io/en/latest/tutorial.html
 from __future__ import division
 import logging
 import sys
+from dataclasses import dataclass
 
 from typing import List, Tuple, Type
 
@@ -14,7 +15,6 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 
 import pycwt as wavelet
-from pycwt.helpers import find
 
 from helpers import define_other_module_log_level
 import retrieve_data
@@ -40,17 +40,58 @@ MOTHER = wavelet.Morlet(f0=6)
 LEVELS = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]  # Period scale is logarithmic
 
 
+@dataclass
+class DataForCWT:
+    """Holds data for continuous wavelet transform"""
+
+    def __init__(
+        self,
+        t_values: npt.NDArray,
+        y_values: npt.NDArray,
+        mother_wavelet: Type,
+        delta_t: float,
+        delta_j: float,
+        initial_scale: float,
+        levels: List[float],
+    ) -> None:
+        self.t_values = t_values
+        self.y_values = y_values
+        self.mother_wavelet = mother_wavelet
+        self.delta_t = delta_t
+        self.delta_j = delta_j
+        self.initial_scale = initial_scale
+        self.levels = levels
+        self.time_range()
+
+    def time_range(self) -> npt.NDArray:
+        """Takes first date and creates array with date based on defined dt"""
+        # Define starting time and time step
+        t0 = min(self.t_values)
+        logger.debug("t0 type %s", type(t0))
+        t0 = t0.astype("datetime64[Y]").astype(int) + 1970
+        num_observations = self.t_values.size
+        self.time_range = np.arange(1, num_observations + 1) * self.delta_t + t0
+        return np.arange(1, num_observations + 1) * self.delta_t + t0
+
+
+@dataclass
+class ResultsFromCWT:
+    """Holds results from continuous wavelet transform"""
+
+    def __init__(
+        self,
+        power: npt.NDArray,
+        period: npt.NDArray,
+        significance_levels: npt.NDArray,
+        coi: npt.NDArray,
+    ) -> None:
+        self.power = power
+        self.period = period
+        self.significance_levels = significance_levels
+        self.coi = coi
+
+
 # * Functions
-def set_time_range(t_array: npt.NDArray, dt: float) -> npt.NDArray:
-    """Takes first date and creates array with date based on defined dt"""
-    # Define starting time and time step
-    t0 = min(t_array)
-    logger.debug("t0 type %s", type(t0))
-    t0 = t0.astype("datetime64[Y]").astype(int) + 1970
-    num_observations = t_array.size
-    return np.arange(1, num_observations + 1) * dt + t0
-
-
 def run_cwt(
     t_values: npt.NDArray,
     y_values: npt.NDArray,
@@ -89,7 +130,7 @@ def run_cwt(
     cwt_sig95 = np.ones([1, num_observations]) * signif[:, None]
     cwt_sig95 = cwt_power / cwt_sig95
 
-    return cwt_power, cwt_period, cwt_coi, cwt_sig95
+    return ResultsFromCWT(cwt_power, cwt_period, cwt_sig95, cwt_coi)
 
 
 def plot_signficance_levels(
@@ -203,9 +244,14 @@ def main() -> None:
     raw_data = retrieve_data.get_fed_data(MEASURE, units="pc1", freqs="m")
     _, t_date, y = retrieve_data.clean_fed_data(raw_data)
 
-    t = set_time_range(t_date, DT)
+    data_for_cwt = DataForCWT(t_date, y, MOTHER, DT, DJ, S0, LEVELS)
 
-    power, period, coi, sig95 = run_cwt(t, y, mother_wavelet=MOTHER, normalize=True)
+    results_from_cwt = run_cwt(
+        data_for_cwt.time_range,
+        data_for_cwt.y_values,
+        mother_wavelet=data_for_cwt.mother_wavelet,
+        normalize=True,
+    )
 
     # * Plot results
     plt.close("all")
@@ -214,14 +260,21 @@ def main() -> None:
     fig, ax = plt.subplots(1, 1, **figprops)
 
     cwt_plot_props = {
-        "cwt_sig95": sig95,
-        "cwt_coi": coi,
+        "cwt_sig95": results_from_cwt.significance_levels,
+        "cwt_coi": results_from_cwt.coi,
         "colors": "k",
         "linewidths": 3,
         "alpha": 0.3,
         "hatch": "--",
     }
-    power_spec = plot_cwt(ax, t, power, period, LEVELS, **cwt_plot_props)
+    power_spec = plot_cwt(
+        ax,
+        data_for_cwt.time_range,
+        results_from_cwt.power,
+        results_from_cwt.period,
+        data_for_cwt.levels,
+        **cwt_plot_props
+    )
 
     # * Set labels/title
     ax.set_xlabel("")
