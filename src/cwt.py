@@ -18,6 +18,7 @@ import pycwt as wavelet
 
 from helpers import define_other_module_log_level
 import retrieve_data
+from wavelet_helpers import plot_cone_of_influence, plot_signficance_levels
 
 # * Logging settings
 logger = logging.getLogger(__name__)
