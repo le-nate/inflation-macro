@@ -7,11 +7,10 @@ from __future__ import division
 import logging
 import sys
 
-from typing import Dict, Generator, List, Tuple, Type, Union
-from datetime import datetime
+from typing import List, Tuple, Type
+
 import numpy as np
 import numpy.typing as npt
-import matplotlib.figure
 import matplotlib.pyplot as plt
 
 import pycwt as wavelet
@@ -114,7 +113,12 @@ def plot_signficance_levels(
 
 
 def plot_cone_of_influence(
-    cwt_ax: plt.Axes, cwt_coi: npt.NDArray, t_values, levels, cwt_period, **kwargs
+    cwt_ax: plt.Axes,
+    cwt_coi: npt.NDArray,
+    t_values: npt.NDArray,
+    levels: List[float],
+    cwt_period: npt.NDArray,
+    **kwargs
 ) -> None:
     """Plot shaded area for cone of influence, where edge effects may occur"""
     alpha = kwargs["alpha"]
