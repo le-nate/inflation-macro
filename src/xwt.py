@@ -41,7 +41,7 @@ LEVELS = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
 
 
 @dataclass
-class DataForXWT(object):
+class DataForXWT:
     """Holds data for XWT"""
 
     def __init__(
@@ -65,7 +65,7 @@ class DataForXWT(object):
 
 
 @dataclass
-class ResultsFromXWT(object):
+class ResultsFromXWT:
     """Holds results from Cross-Wavelet Transform"""
 
     def __init__(
@@ -284,14 +284,6 @@ def main() -> None:
     raw_data = retrieve_data.get_fed_data(measure_2, units="pc1")
     df2, _, _ = retrieve_data.clean_fed_data(raw_data)
 
-    # measure_1 = "000857180"
-    # raw_data = retrieve_data.get_insee_data(measure_1)
-    # df1, _, _ = retrieve_data.clean_insee_data(raw_data)
-
-    # measure_2 = "000857181"
-    # raw_data = retrieve_data.get_insee_data(measure_2)
-    # df2, _, _ = retrieve_data.clean_insee_data(raw_data)
-
     # * Pre-process data: Align time series temporally
     dfcombo = df1.merge(df2, how="left", on="date", suffixes=("_1", "_2"))
     dfcombo.dropna(inplace=True)
@@ -299,7 +291,6 @@ def main() -> None:
     # * Pre-process data: Standardize and detrend
     y1 = dfcombo["value_1"].to_numpy()
     y2 = dfcombo["value_2"].to_numpy()
-    t = np.linspace(1, y1.size + 1, y1.size)
     y1 = wavelet_helpers.standardize_data_for_xwt(y1, detrend=False, remove_mean=True)
     y2 = wavelet_helpers.standardize_data_for_xwt(y2, detrend=False, remove_mean=True)
 
@@ -316,10 +307,6 @@ def main() -> None:
     )
 
     results_from_xwt = run_xwt(xwt_data, ignore_strong_trends=False)
-
-    # * Plot results
-    print(dfcombo.head())
-    print(dfcombo.info())
 
     # * Plot XWT power spectrum
     _, ax = plt.subplots(1, 1, figsize=(10, 8), sharex=True)
