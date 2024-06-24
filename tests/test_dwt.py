@@ -2,66 +2,57 @@
 
 # %%
 import logging
+import sys
 
-import numpy as np
 import pywt
 
 from src import dwt
 from src.helpers import define_other_module_log_level
-from src import retrieve_data as rd
-from scripts import simulation_consumption as sim
+from src import retrieve_data
 
 # * Logging settings
 logger = logging.getLogger(__name__)
 define_other_module_log_level("debug")
 logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 
-# %%
+# * Constants
+MOTHER = pywt.Wavelet("db4")
+
 print("Testing trim_signal catches odd-numbered signals")
-test_signal = [x for x in range(1000)]
+test_signal = list(range(1000))
 print(f"Signal length: {len(test_signal)}")
 trim = dwt.trim_signal(test_signal, test_signal)
 assert len(trim) == len(test_signal)
 print(f"Signal length: {len(test_signal)}")
-test_signal = [x for x in range(1001)]
+test_signal = list(range(1001))
 print(f"Signal length: {len(test_signal)}")
 trim = dwt.trim_signal(test_signal, test_signal)
 assert len(trim) != len(test_signal)
 
-
-# %%
-print("Testing smooth signal with INSEE data")
-raw_data = rd.get_insee_data("000857179")
-_, t, y = rd.clean_insee_data(raw_data)
-
-## Define the wavelet type
-WAVELET = "db4"
-smooth_signals, dwt_levels = dwt.smooth_signal(y, WAVELET)
-# print(len(y), len(smooth_signals[dwt_levels]["signal"]))
-assert len(smooth_signals[dwt_levels]["signal"]) == len(y)
+raw_data = retrieve_data.get_insee_data("000857179")
+_, t, y = retrieve_data.clean_insee_data(raw_data)
 
 
-# %%
-print("Testing smooth signal with Banque de France data")
-raw_data = rd.get_bdf_data(series_key="ICP.M.FR.N.000000.4.ANR")
-_, t, y = rd.clean_bdf_data(raw_data)
+logger.info("Test creation of DataForDWT class instance")
+data_for_dwt = dwt.DataForDWT(y, MOTHER)
+assert len(data_for_dwt.y_values) == len(y)
+assert data_for_dwt.levels is None
+logger.info("Test passed")
 
-## Define the wavelet type
-WAVELET = "db4"
-w = pywt.Wavelet(WAVELET)
-smooth_signals, dwt_levels = dwt.smooth_signal(y, WAVELET)
-print(len(y), len(smooth_signals[dwt_levels]["signal"]))
-assert len(smooth_signals[dwt_levels]["signal"]) == len(y)
+logger.info("Testing DWT with INSEE data")
+# * Apply DWT and smooth signal
+results_from_dwt = dwt.run_dwt(data_for_dwt)
+assert data_for_dwt.levels is None
+logger.info("Test passed")
 
+logger.info("Testing smooth signal with INSEE data")
+# * Apply DWT and smooth signal
+results_from_dwt = dwt.smooth_signal(data_for_dwt)
+assert results_from_dwt.levels is not None
+assert len(
+    results_from_dwt.smoothed_signal_dict[results_from_dwt.levels]["signal"]
+) == len(y)
+logger.info("Test passed")
 
-# %%
-print("Testing smooth_signal with odd-numbered observations")
-t = np.linspace(1, 1001, 1001)
-y = sim.consumption(t)
-# Perform wavelet decomposition
-WAVELET = "sym12"  ## Wavelet type, Symmlet 12
-smooth_signals, dwt_levels = dwt.smooth_signal(y, WAVELET)
-print(len(y), len(smooth_signals[dwt_levels]["signal"]))
-assert len(smooth_signals[dwt_levels]["signal"]) == len(y)
-
-print("Wavelet smoothing testing complete.")
+print("DWT testing complete.")

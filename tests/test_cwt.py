@@ -13,8 +13,7 @@ import pycwt as wavelet
 from pycwt.helpers import find
 
 from src.helpers import define_other_module_log_level
-from src import retrieve_data as rd
-from src.cwt import set_time_range, run_cwt
+from src import retrieve_data, cwt
 
 # * Logging settings
 logger = logging.getLogger(__name__)
@@ -23,17 +22,18 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 MEASURE = "MICH"
-DT = 1 / 12
-MOTHER = wavelet.Morlet(f0=6)
+raw_data = retrieve_data.get_fed_data(MEASURE, units="pc1", freqs="m")
+_, t_date, dat = retrieve_data.clean_fed_data(raw_data)
+data_for_cwt = cwt.DataForCWT(
+    t_date, dat, cwt.MOTHER, cwt.DT, cwt.DJ, cwt.S0, cwt.LEVELS
+)
 
 logger.info("Test set_time_range")
-raw_data = rd.get_fed_data(MEASURE, units="pc1", freqs="m")
-_, t_date, dat = rd.clean_fed_data(raw_data)
-t_test = set_time_range(t_date, DT)
+t_test = data_for_cwt.time_range
 assert len(t_test) == len(t_date)
 
 logger.info("Test run_cwt")
-power, period, _, _ = run_cwt(t_test, dat, MOTHER)
+power, period, _, _ = cwt.run_cwt(t_test, dat, cwt.MOTHER)
 assert len(power) == len(period)
 
 logger.info("CWT test complete!")

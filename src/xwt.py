@@ -1,22 +1,17 @@
 """Cross wavelet transformation"""
 
 from __future__ import division
+from dataclasses import dataclass
 import logging
 import sys
-from dataclasses import dataclass
-from typing import Dict, Generator, List, Tuple, Type, Union
+from typing import List, Tuple, Type
 
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
 import pycwt as wavelet
-from pycwt.helpers import find
 
-from src.helpers import (
-    define_other_module_log_level,
-    plot_cone_of_influence,
-    plot_signficance_levels,
-)
+from src.helpers import define_other_module_log_level
 from src import retrieve_data
 from src import wavelet_helpers
 
@@ -124,10 +119,6 @@ def run_xwt(
         coi_plot = coi
 
     # * Caclulate wavelet coherence
-    mother_wavelet_for_coherence = cross_wavelet_transform.mother_wavelet
-    logger.debug(
-        "Using mother wavelet *%s* for coherence", mother_wavelet_for_coherence
-    )
     _, phase, _, _, _ = wavelet.wct(
         cross_wavelet_transform.y1_values,
         cross_wavelet_transform.y2_values,
@@ -137,7 +128,7 @@ def run_xwt(
         J=-1,
         sig=False,  #! To save time
         # significance_level=0.8646,
-        wavelet=mother_wavelet_for_coherence,
+        wavelet=cross_wavelet_transform.mother_wavelet,
         normalize=True,
         cache=True,
     )
@@ -202,17 +193,16 @@ def plot_xwt(
     # * Add XWT power spectrum features
     if include_significance:
         ## Plot significance level contours
-        plot_signficance_levels(
+        wavelet_helpers.plot_signficance_levels(
             xwt_ax,
             xwt_results.significance_levels,
             xwt_data.t_values,
             xwt_results.period,
-            colors=kwargs["sig_colors"],
-            linewidths=kwargs["sig_linewidths"],
+            **kwargs,
         )
     if include_cone_of_influence:
         ## Plot cone of influence
-        plot_cone_of_influence(
+        wavelet_helpers.plot_cone_of_influence(
             xwt_ax,
             xwt_results.coi,
             xwt_data.t_values,
@@ -220,9 +210,7 @@ def plot_xwt(
             xwt_results.period,
             xwt_data.delta_t,
             tranform_type="xwt",
-            color=kwargs["coi_color"],
-            alpha=kwargs["coi_alpha"],
-            hatch=kwargs["coi_hatch"],
+            **kwargs,
         )
     if include_phase_difference:
         ## Plot phase difference indicator vector arrows
@@ -232,12 +220,7 @@ def plot_xwt(
             xwt_results.period,
             xwt_results.phase_diff_u,
             xwt_results.phase_diff_v,
-            units=kwargs["phase_diff_units"],
-            angles=kwargs["phase_diff_angles"],
-            pivot=kwargs["phase_diff_pivot"],
-            linewidth=kwargs["phase_diff_linewidth"],
-            edgecolor=kwargs["phase_diff_edgecolor"],
-            alpha=kwargs["phase_diff_alpha"],
+            **kwargs,
         )
 
 
@@ -251,24 +234,23 @@ def plot_phase_difference(
 ) -> None:
     """Plot shaded area for cone of influence, where edge effects may occur\n
     **kwargs**\n
-    `units=`: "width"\n
-    `angles=`: "uv"\n
-    `pivot=`: "mid"\n
-    `linewidth=`: 0.5\n
-    `edgecolor=`: "k"\n
-    `alpha=`: 0.7"""
-    print(kwargs["angles"])
+    `phase_diff_units=`: "width"\n
+    `phase_diff_angles=`: "uv"\n
+    `phase_diff_pivot=`: "mid"\n
+    `phase_diff_linewidth=`: 0.5\n
+    `phase_diff_edgecolor=`: "k"\n
+    `phase_diff_alpha=`: 0.7"""
     xwt_ax.quiver(
         t_values[::12],
         np.log2(period[::8]),
         phase_diff_u[::12, ::12],
         phase_diff_v[::12, ::12],
-        units=kwargs["units"],
-        angles=kwargs["angles"],
-        pivot=kwargs["pivot"],
-        linewidth=kwargs["linewidth"],
-        edgecolor=kwargs["edgecolor"],
-        alpha=kwargs["alpha"],
+        units=kwargs["phase_diff_units"],
+        angles=kwargs["phase_diff_angles"],
+        pivot=kwargs["phase_diff_pivot"],
+        linewidth=kwargs["phase_diff_linewidth"],
+        edgecolor=kwargs["phase_diff_edgecolor"],
+        alpha=kwargs["phase_diff_alpha"],
     )
 
 
@@ -311,6 +293,21 @@ def main() -> None:
     # * Plot XWT power spectrum
     _, ax = plt.subplots(1, 1, figsize=(10, 8), sharex=True)
 
+    xwt_plot_props = {
+        "cmap": "jet",
+        "sig_colors": "k",
+        "sig_linewidths": 2,
+        "coi_color": "k",
+        "coi_alpha": 0.3,
+        "coi_hatch": "--",
+        "phase_diff_units": "width",
+        "phase_diff_angles": "uv",
+        "phase_diff_pivot": "mid",
+        "phase_diff_linewidth": 0.5,
+        "phase_diff_edgecolor": "k",
+        "phase_diff_alpha": 0.7,
+    }
+
     plot_xwt(
         ax,
         xwt_data,
@@ -318,18 +315,7 @@ def main() -> None:
         include_significance=True,
         include_cone_of_influence=True,
         include_phase_difference=True,
-        cmap="jet",
-        sig_colors="k",
-        sig_linewidths=2,
-        coi_color="k",
-        coi_alpha=0.3,
-        coi_hatch="--",
-        phase_diff_units="width",
-        phase_diff_angles="uv",
-        phase_diff_pivot="mid",
-        phase_diff_linewidth=0.5,
-        phase_diff_edgecolor="k",
-        phase_diff_alpha=0.7,
+        **xwt_plot_props,
     )
 
     # * Invert y axis
