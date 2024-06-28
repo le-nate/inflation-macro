@@ -169,12 +169,13 @@ def plot_smoothing(
         smooth_level = len(smooth_signals) - level
         ## Subplot for each smooth signal
         plt.subplot(len(smooth_signals), 1, i)
-        plt.plot(original_t, original_y, label=name.title())
+        plt.plot(original_t, original_y, label="Actual")
         plt.plot(original_t, signal["signal"])
         plt.xlabel("Year")
         plt.grid()
         plt.title(rf"Approximation: $S_{{j-{smooth_level}}}$")
-        plt.legend()
+        if i == 1:
+            plt.legend()
     return fig, name
 
 
