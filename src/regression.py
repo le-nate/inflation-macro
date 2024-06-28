@@ -3,15 +3,16 @@
 import logging
 import sys
 
+from typing import Dict, Type
+
 import matplotlib.pyplot as plt
 import matplotlib.figure
-import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import pywt
 import seaborn as sns
 import statsmodels.api as sm
-from statsmodels.graphics.regressionplots import plot_fit
-from statsmodels.iolib.summary2 import summary_col
+import statsmodels.iolib.summary2
 
 from src import dwt
 from src.helpers import define_other_module_log_level
@@ -38,17 +39,17 @@ def simple_regression(
 
 
 def wavelet_approximation(
-    smooth_x_dict: dict,
+    smooth_t_dict: Dict[int, Dict[str, npt.NDArray]],
     original_y: npt.NDArray,
     levels: int,
     add_constant: bool = True,
     verbose: bool = False,
-) -> dict:
+) -> Dict[int, Type[sm.regression.linear_model.RegressionResultsWrapper]]:
     """Regresses smooth components"""
     regressions_dict = {}
     crystals = list(range(1, levels + 1))
     for c in crystals:
-        x_c = smooth_x_dict[c]["signal"]
+        x_c = smooth_t_dict[c]["signal"]
         if add_constant:
             x_c = sm.add_constant(x_c)
         model = sm.OLS(original_y, x_c)
@@ -63,12 +64,12 @@ def wavelet_approximation(
 
 
 def time_scale_regression(
-    in_coeffs: list,
-    out_coeffs: list,
+    input_coeffs: npt.NDArray,
+    output_coeffs: npt.NDArray,
     levels: int,
-    wavelet: str,
+    mother_wavelet: str,
     add_constant: bool = True,
-) -> dict:
+) -> Type[statsmodels.iolib.summary2.Summary]:
     """Regresses output on  input for each component vector S_J, D_J, ..., D_1,
     where J=levels"""
     regressions_dict = {}
@@ -79,16 +80,16 @@ def time_scale_regression(
             vector_name = f"D_{levels - j + 1}"
         print(f"Regressing on component vector {vector_name}")
         # * Reconstruct each component vector indiviually
-        in_j = dwt.reconstruct_signal_component(in_coeffs, wavelet, j)
-        out_j = dwt.reconstruct_signal_component(out_coeffs, wavelet, j)
+        input_j = dwt.reconstruct_signal_component(input_coeffs, mother_wavelet, j)
+        output_j = dwt.reconstruct_signal_component(output_coeffs, mother_wavelet, j)
 
         # * Run regression
         if add_constant:
-            in_j = sm.add_constant(in_j)
-        model = sm.OLS(out_j, in_j)
+            input_j = sm.add_constant(input_j)
+        model = sm.OLS(output_j, input_j)
         regressions_dict[vector_name] = model.fit()
-    results = summary_col(
-        [res for res in regressions_dict.values()],
+    results = statsmodels.iolib.summary2.summary_col(
+        list(regressions_dict.values()),
         stars=True,
         model_names=list(regressions_dict),
     )
@@ -98,8 +99,8 @@ def time_scale_regression(
 def plot_compare_components(
     a_label: str,
     b_label: str,
-    smooth_a_coeffs: list,
-    smooth_b_coeffs: list,
+    smooth_a_coeffs: npt.NDArray,
+    smooth_b_coeffs: npt.NDArray,
     time: npt.NDArray,
     levels: int,
     wavelet: str,
@@ -127,7 +128,7 @@ def plot_compare_components(
 
 
 # ! Define mother wavelet
-MOTHER = "db4"
+MOTHER = pywt.Wavelet("db4")
 
 
 # # %% [markdown]
@@ -493,7 +494,6 @@ def main() -> None:
     # * Inflation expectations
     raw_data = rd.get_fed_data("MICH", units="pc1")
     inf_exp, _, _ = rd.clean_fed_data(raw_data)
-    ## Rename value column
     inf_exp.rename(columns={"value": "expectation"}, inplace=True)
     print("Descriptive stats for inflation expectations")
     print(inf_exp.describe())
@@ -519,15 +519,15 @@ def main() -> None:
     print("Descriptive stats for personal savings rate")
     print(save.describe())
 
-    # * Merge dataframes to remove extra dates
+    # * Merge dataframes to align dates and remove extras
     df = inf_exp.merge(nondur_consump, how="left")
     df = df.merge(dur_consump, how="left")
     df = df.merge(save, how="left")
     print(
-        f"""Inflation expectations observations: {len(inf_exp)}, \nNon-durables 
-        consumption observations: {len(nondur_consump)}, \nDurables 
-        consumption observations: {len(dur_consump)}, \nSavings
-        observation {len(save)}.\nNew dataframe lengths: {len(df)}"""
+        f"""Inflation expectations observations: {len(inf_exp)}, \n
+        Non-durables consumption observations: {len(nondur_consump)}, \n
+        Durables consumption observations: {len(dur_consump)}, \n
+        Savings observation {len(save)}.\nNew dataframe lengths: {len(df)}"""
     )
     print(df.head(), "\n", df.tail())
     print("--------------------------Descriptive stats--------------------------\n")
@@ -537,63 +537,65 @@ def main() -> None:
 
     # * Wavelet decomposition
     t = df["date"].to_numpy()
-    exp = df["expectation"].to_numpy()
-    nondur = df["nondurable"].to_numpy()
-    dur = df["durable"].to_numpy()
-    sav = df["savings"].to_numpy()
 
-    dwt_levels, exp_coeffs = dwt.run_dwt(exp, MOTHER)
-    print("len coeffs: ", len(exp_coeffs), len(exp_coeffs[0]), len(exp_coeffs[5]))
-    _, nondur_coeffs = dwt.run_dwt(nondur, MOTHER, dwt_levels)
-    _, dur_coeffs = dwt.run_dwt(dur, MOTHER, dwt_levels)
-    _, sav_coeffs = dwt.run_dwt(sav, MOTHER, dwt_levels)
+    ## Create objects for DWT
+    exp_dwt = dwt.DataForDWT(df["expectation"].to_numpy(), MOTHER)
+    nondur_consump_dwt = dwt.DataForDWT(df["nondurable"].to_numpy(), MOTHER)
+    dur_consump_dwt = dwt.DataForDWT(df["durable"].to_numpy(), MOTHER)
+    save_dwt = dwt.DataForDWT(df["savings"].to_numpy(), MOTHER)
+
+    logger.debug("exp mother wavelet %s", type(exp_dwt.mother_wavelet))
+    results_exp_dwt = dwt.run_dwt(exp_dwt)
+    results_nondur_consump_dwt = dwt.run_dwt(nondur_consump_dwt)
+    results_dur_consump_dwt = dwt.run_dwt(dur_consump_dwt)
+    results_save_dwt = dwt.run_dwt(save_dwt)
 
     df_melt = pd.melt(df, ["date"])
     df_melt.rename(columns={"value": "%"}, inplace=True)
 
     # * Plot log-by-log change amount frequency
-    fig4 = plt.figure()
-    ax = fig4.add_subplot(111)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
     ax.set_xscale("log")
     ax.set_yscale("log")
     sns.kdeplot(data=df_melt, x="%", hue="variable", ax=ax)
 
     # * Plot each series component separately
-    fig1 = plot_compare_components(
+    _ = plot_compare_components(
         "expectation",
         "nondurable",
-        exp_coeffs,
-        nondur_coeffs,
+        results_exp_dwt.coeffs,
+        results_nondur_consump_dwt.coeffs,
         t,
-        dwt_levels,
+        results_exp_dwt.levels,
         MOTHER,
         figsize=(15, 10),
     )
 
-    fig2 = plot_compare_components(
+    _ = plot_compare_components(
         "expectation",
         "durable",
-        exp_coeffs,
-        dur_coeffs,
+        results_exp_dwt.coeffs,
+        results_dur_consump_dwt.coeffs,
         t,
-        dwt_levels,
+        results_exp_dwt.levels,
         MOTHER,
         figsize=(15, 10),
     )
 
-    fig3 = plot_compare_components(
+    _ = plot_compare_components(
         "expectation",
         "savings",
-        exp_coeffs,
-        sav_coeffs,
+        results_exp_dwt.coeffs,
+        results_save_dwt.coeffs,
         t,
-        dwt_levels,
+        results_exp_dwt.levels,
         MOTHER,
         figsize=(15, 10),
     )
 
     # * Plot initial series
-    fig5, (bx) = plt.subplots(1, 1)
+    _, (bx) = plt.subplots(1, 1)
     bx = sns.lineplot(data=df_melt, x="date", y="%", hue="variable", ax=bx)
 
     plt.show()
