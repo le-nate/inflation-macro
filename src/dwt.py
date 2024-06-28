@@ -40,7 +40,10 @@ class DataForDWT:
 
 @dataclass
 class ResultsFromDWT:
-    """Holds data for discrete wavelet transform"""
+    """Holds data for discrete wavelet transform
+    `coeffs`: transform coefficients
+    `levels`: transform levels applied
+    `smoothed_signal_dict`: dictionary of coefficients for each time scale"""
 
     def __init__(
         self,
