@@ -72,6 +72,9 @@ us_data = us_data.merge(nondur_consump, how="left")
 us_data = us_data.merge(dur_consump, how="left")
 us_data = us_data.merge(save, how="left")
 
+# * Remove rows without data for all measures
+us_data.dropna(inplace=True)
+
 usa_sliced = pd.concat([us_data.head(), us_data.tail()])
 usa_sliced
 
@@ -333,7 +336,7 @@ plt.show()
 # %%
 approximations = regression.wavelet_approximation(
     smooth_t_dict=results_exp_dwt.smoothed_signal_dict,
-    original_y=nondur_for_dwt.y_values,y
+    original_y=nondur_for_dwt.y_values,
     levels=results_exp_dwt.levels,
 )
 
