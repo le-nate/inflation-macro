@@ -259,11 +259,11 @@ def main() -> None:
 
     # * Load dataset
     measure_1 = "MICH"
-    raw_data = retrieve_data.get_fed_data(measure_1)
+    raw_data = retrieve_data.get_fed_data(measure_1, units="pc1", freq="m")
     df1, _, _ = retrieve_data.clean_fed_data(raw_data)
 
     measure_2 = "PCEDG"
-    raw_data = retrieve_data.get_fed_data(measure_2, units="pc1")
+    raw_data = retrieve_data.get_fed_data(measure_2, units="pc1", freq="m")
     df2, _, _ = retrieve_data.clean_fed_data(raw_data)
 
     # * Pre-process data: Align time series temporally
