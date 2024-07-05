@@ -66,21 +66,8 @@ def trim_signal(
     ## Time series with uneven result in mismatched lengths with the reconstructed
     ## signal, so we remove a value from the approximated signal
     if len(original_signal) % 2 != 0:
-        trim = input(
-            f"""Odd number of observations dectected (Length: {len(original_signal)}).
-            Trim reconstructed data? (y/n)"""
-        )
-        while trim not in ["y", "n"]:
-            trim = input("Please respond with either 'y' or 'n'")
-        if trim == "y":
-            trim2 = input("Trim beginning or end of the time series? (b/e)")
-            while trim2 not in ["b", "e"]:
-                trim2 = input("Please respond with either 'b' or 'e'")
-            if trim2 == "b":
-                return reconstructed[1:]
-            return reconstructed[1:]
-    else:
-        return reconstructed
+        return reconstructed[1:]
+    return reconstructed
 
 
 def run_dwt(dwt_data: Type[DataForDWT]) -> Type[ResultsFromDWT]:
