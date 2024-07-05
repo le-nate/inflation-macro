@@ -66,6 +66,7 @@ def trim_signal(
     ## Time series with uneven result in mismatched lengths with the reconstructed
     ## signal, so we remove a value from the approximated signal
     if len(original_signal) % 2 != 0:
+        logger.warning("Trimming signal at beginning")
         return reconstructed[1:]
     return reconstructed
 
