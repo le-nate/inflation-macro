@@ -40,7 +40,10 @@ class DataForDWT:
 
 @dataclass
 class ResultsFromDWT:
-    """Holds data for discrete wavelet transform"""
+    """Holds data for discrete wavelet transform
+    `coeffs`: transform coefficients
+    `levels`: transform levels applied
+    `smoothed_signal_dict`: dictionary of coefficients for each time scale"""
 
     def __init__(
         self,
@@ -63,21 +66,9 @@ def trim_signal(
     ## Time series with uneven result in mismatched lengths with the reconstructed
     ## signal, so we remove a value from the approximated signal
     if len(original_signal) % 2 != 0:
-        trim = input(
-            f"""Odd number of observations dectected (Length: {len(original_signal)}).
-            Trim reconstructed data? (y/n)"""
-        )
-        while trim not in ["y", "n"]:
-            trim = input("Please respond with either 'y' or 'n'")
-        if trim == "y":
-            trim2 = input("Trim beginning or end of the time series? (b/e)")
-            while trim2 not in ["b", "e"]:
-                trim2 = input("Please respond with either 'b' or 'e'")
-            if trim2 == "b":
-                return reconstructed[1:]
-            return reconstructed[1:]
-    else:
-        return reconstructed
+        logger.warning("Trimming signal at beginning")
+        return reconstructed[1:]
+    return reconstructed
 
 
 def run_dwt(dwt_data: Type[DataForDWT]) -> Type[ResultsFromDWT]:
@@ -166,12 +157,13 @@ def plot_smoothing(
         smooth_level = len(smooth_signals) - level
         ## Subplot for each smooth signal
         plt.subplot(len(smooth_signals), 1, i)
-        plt.plot(original_t, original_y, label=name.title())
+        plt.plot(original_t, original_y, label="Actual")
         plt.plot(original_t, signal["signal"])
         plt.xlabel("Year")
         plt.grid()
         plt.title(rf"Approximation: $S_{{j-{smooth_level}}}$")
-        plt.legend()
+        if i == 1:
+            plt.legend()
     return fig, name
 
 

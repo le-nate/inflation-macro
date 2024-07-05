@@ -33,7 +33,7 @@ t_test = data_for_cwt.time_range
 assert len(t_test) == len(t_date)
 
 logger.info("Test run_cwt")
-power, period, _, _ = cwt.run_cwt(t_test, dat, cwt.MOTHER)
-assert len(power) == len(period)
+results_from_cwt = cwt.run_cwt(data_for_cwt)
+assert len(results_from_cwt.power) == len(results_from_cwt.period)
 
 logger.info("CWT test complete!")

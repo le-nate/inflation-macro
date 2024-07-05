@@ -1,14 +1,13 @@
 """Retrieve data for analysis via API from statistics agencies and central banks"""
 
-import dateparser
-from dotenv import load_dotenv
 import json
+import os
+
+from dotenv import load_dotenv
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import os
 import requests
-import wbgapi as wb
 import xmltodict
 
 ## Retrieve API credentials
@@ -124,6 +123,10 @@ def get_insee_data(series_id: str) -> list:
     - 'Perceived inflation' `"000857179"`,
     - 'Expected savings' `"000857186"`,
     - 'Expected consumption' `"000857181"`,
+    - 'Household food consumption' `'011794482'`,
+    - 'Household goods consumptions' `'011794487'`,
+    - 'Household durables consumption' `'011794493'`,
+
     """
     url = f"https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/{series_id}"
     headers = {
