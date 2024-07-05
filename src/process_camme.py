@@ -23,7 +23,7 @@ logger.setLevel(logging.DEBUG)
 
 # * Get data directory folder
 parent_dir = Path(__file__).parents[1]
-data_dir = parent_dir / "data" / "camme"
+camme_dir = parent_dir / "data" / "camme"
 
 
 def retrieve_folders(path: Union[str, os.PathLike]) -> Dict[
@@ -124,7 +124,9 @@ def create_complete_dataframe(dir_dict: Dict[str, pd.DataFrame]) -> pd.DataFrame
     return pd.concat(df_complete, axis=0, ignore_index=True)
 
 
-def preprocess() -> Tuple[Dict[str, pd.DataFrame], pd.DataFrame]:
+def preprocess(
+    data_dir: Union[str, os.PathLike]
+) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """Create DataFrame with all years' data"""
     logging.info("Retrieving folders")
     camme_csv_folders = retrieve_folders(data_dir)
@@ -135,18 +137,18 @@ def preprocess() -> Tuple[Dict[str, pd.DataFrame], pd.DataFrame]:
     dfs = convert_to_year_dataframe(camme_csv_folders)
     end = time.time()
     dtime = end - start
-    logging.info("Elapsed time to convert to DataFrames: %s", dtime)
     ## Elapsed time before change: 11.67s
     print(dfs["1989"].head())
     print(dfs["1991"].head())
     print(dfs["2004"].head())
     print(dfs["2021"].head())
+    logging.info("Elapsed time to convert to DataFrames: %s", dtime)
     return dfs, create_complete_dataframe(dfs)
 
 
 def main() -> None:
     """Run script"""
-    _, df_final = preprocess()
+    _, df_final = preprocess(camme_dir)
     print(df_final[df_final["year"] == 2021].head())
     print(df_final.tail())
     print(df_final.info())
