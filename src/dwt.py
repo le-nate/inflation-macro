@@ -2,7 +2,7 @@
 Smoothing of signals via wavelet reconstruction
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import logging
 import sys
 from typing import Dict, Generator, List, Tuple, Type, Union
@@ -30,12 +30,9 @@ MOTHER = pywt.Wavelet("sym12")
 class DataForDWT:
     """Holds data for discrete wavelet transform"""
 
-    def __init__(
-        self, y_values: npt.NDArray, mother_wavelet: Type, levels: float = None
-    ) -> None:
-        self.y_values = y_values
-        self.mother_wavelet = mother_wavelet
-        self.levels = levels
+    y_values: npt.NDArray
+    mother_wavelet: Type
+    levels: float = None
 
 
 @dataclass
@@ -45,18 +42,11 @@ class ResultsFromDWT:
     `levels`: transform levels applied
     `smoothed_signal_dict`: dictionary of coefficients for each time scale"""
 
-    def __init__(
-        self,
-        coeffs: npt.NDArray,
-        levels: float,
-        smoothed_signal_dict: Dict[int, Dict[str, npt.NDArray]] = None,
-    ) -> None:
-        self.coeffs = coeffs
-        self.levels = levels
-        if smoothed_signal_dict is None:
-            # * Create empty dictionary to fill in later
-            smoothed_signal_dict = {}
-        self.smoothed_signal_dict = smoothed_signal_dict
+    coeffs: npt.NDArray
+    levels: float
+    smoothed_signal_dict: Dict[int, Dict[str, npt.NDArray]] = field(
+        default_factory=dict
+    )
 
 
 def trim_signal(
