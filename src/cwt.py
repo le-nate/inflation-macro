@@ -6,7 +6,7 @@ based off: https://pycwt.reaDThedocs.io/en/latest/tutorial.html
 from __future__ import division
 import logging
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from typing import List, Tuple, Type
 
@@ -45,6 +45,14 @@ LEVELS = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]  # Period scale is logarithm
 class DataForCWT:
     """Holds data for continuous wavelet transform"""
 
+    t_values: npt.NDArray
+    y_values: npt.NDArray
+    mother_wavelet: Type
+    delta_t: float
+    delta_j: float
+    initial_scale: float
+    levels: List[float]
+
     def __init__(
         self,
         t_values: npt.NDArray,
@@ -79,17 +87,10 @@ class DataForCWT:
 class ResultsFromCWT:
     """Holds results from continuous wavelet transform"""
 
-    def __init__(
-        self,
-        power: npt.NDArray,
-        period: npt.NDArray,
-        significance_levels: npt.NDArray,
-        coi: npt.NDArray,
-    ) -> None:
-        self.power = power
-        self.period = period
-        self.significance_levels = significance_levels
-        self.coi = coi
+    power: npt.NDArray
+    period: npt.NDArray
+    significance_levels: npt.NDArray
+    coi: npt.NDArray
 
 
 # * Functions
