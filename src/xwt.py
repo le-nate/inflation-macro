@@ -262,7 +262,7 @@ def main() -> None:
     raw_data = retrieve_data.get_fed_data(measure_1, units="pc1", freq="m")
     df1, _, _ = retrieve_data.clean_fed_data(raw_data)
 
-    measure_2 = "PCEDG"
+    measure_2 = "CPIAUCNS"
     raw_data = retrieve_data.get_fed_data(measure_2, units="pc1", freq="m")
     df2, _, _ = retrieve_data.clean_fed_data(raw_data)
 
@@ -274,7 +274,7 @@ def main() -> None:
     y1 = dfcombo["value_1"].to_numpy()
     y2 = dfcombo["value_2"].to_numpy()
     y1 = wavelet_helpers.standardize_data_for_xwt(y1, detrend=False, remove_mean=True)
-    y2 = wavelet_helpers.standardize_data_for_xwt(y2, detrend=False, remove_mean=True)
+    y2 = wavelet_helpers.standardize_data_for_xwt(y2, detrend=True, remove_mean=False)
 
     mother_xwt = MOTHER_DICT[MOTHER]
 
@@ -329,7 +329,7 @@ def main() -> None:
     ax.set_yticks(np.log2(y_ticks))
     ax.set_yticklabels(y_ticks)
 
-    ax.set_title("Inflation Expectations X Durables Consumption (US)")
+    ax.set_title("Inflation Expectations X CPI Inflation (US)")
     ax.set_ylabel("Period (years)")
 
     plt.show()
