@@ -27,10 +27,10 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 # * Define title and labels for plots
-LABEL = "Expected Inflation (US)"
+LABEL = "Inflation (US)"
 UNITS = "%"
 
-MEASURE = "MICH"
+MEASURE = "CPIAUCNS"
 
 NORMALIZE = True  # Define normalization
 DT = 1 / 12  # In years
