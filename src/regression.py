@@ -17,7 +17,7 @@ import statsmodels.iolib.summary2
 
 from src import dwt
 from src.helpers import define_other_module_log_level
-from src import retrieve_data as rd
+from src import retrieve_data
 
 # * Logging settings
 logger = logging.getLogger(__name__)
@@ -153,29 +153,29 @@ def plot_compare_components(
 def main() -> None:
     """Run script"""
     # * Inflation expectations
-    raw_data = rd.get_fed_data("MICH", units="pc1")
-    inf_exp, _, _ = rd.clean_fed_data(raw_data)
+    raw_data = retrieve_data.get_fed_data("MICH", units="pc1")
+    inf_exp, _, _ = retrieve_data.clean_fed_data(raw_data)
     inf_exp.rename(columns={"value": "expectation"}, inplace=True)
     print("Descriptive stats for inflation expectations")
     print(inf_exp.describe())
 
     # * Non-durables consumption, monthly
-    raw_data = rd.get_fed_data("PCEND", units="pc1")
-    nondur_consump, _, _ = rd.clean_fed_data(raw_data)
+    raw_data = retrieve_data.get_fed_data("PCEND", units="pc1")
+    nondur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
     nondur_consump.rename(columns={"value": "nondurable"}, inplace=True)
     print("Descriptive stats for personal non-durables consumption")
     print(nondur_consump.describe())
 
     # * Durables consumption, monthly
-    raw_data = rd.get_fed_data("PCEDG", units="pc1")
-    dur_consump, _, _ = rd.clean_fed_data(raw_data)
+    raw_data = retrieve_data.get_fed_data("PCEDG", units="pc1")
+    dur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
     dur_consump.rename(columns={"value": "durable"}, inplace=True)
     print("Descriptive stats for personal durables consumption")
     print(dur_consump.describe())
 
     # * Personal savings rate
-    raw_data = rd.get_fed_data("PSAVERT", units="pc1")
-    save, _, _ = rd.clean_fed_data(raw_data)
+    raw_data = retrieve_data.get_fed_data("PSAVERT", units="pc1")
+    save, _, _ = retrieve_data.clean_fed_data(raw_data)
     save.rename(columns={"value": "savings"}, inplace=True)
     print("Descriptive stats for personal savings rate")
     print(save.describe())
