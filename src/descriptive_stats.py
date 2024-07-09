@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 import sys
 
-from typing import Dict, Tuple, Type, Union
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -17,16 +17,33 @@ from src import retrieve_data
 
 # * Logging settings
 logger = logging.getLogger(__name__)
-define_other_module_log_level("debug")
+define_other_module_log_level("info")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
+DESCRIPTIVE_STATS = ["count", "mean", "std", "skewness", "kurtosis"]
 
-# TODO Calculate mean & std
 
-# TODO Calculate skewness
+def parse_results_dict(
+    complete_dict: Dict[str, Dict[str, float]], stats_to_keep: List[str]
+) -> Dict[str, Dict[str, float]]:
+    """Extract only required statistics from dictionary"""
+    parsed_dict = {}
+    for measure, result_dict in complete_dict.items():
+        parsed_dict[measure] = {stat: result_dict[stat] for stat in stats_to_keep}
+    return parsed_dict
 
-# TODO Calculate kurtosis
+
+def include_statistic(
+    statistic: str,
+    statistic_data: Dict[str, float],
+    results_dict: Dict[str, Dict[str, float]],
+) -> Dict[str, Dict[str, float]]:
+    """Add skewness data for each measure"""
+    for measure, result_dict in results_dict.items():
+        result_dict[statistic] = statistic_data[measure]
+    return results_dict
+
 
 # TODO Calculate Jarque-Berra
 
@@ -37,7 +54,7 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 
 # TODO Generate summary table
 def create_summary_table(
-    data_dict: Dict[str, Dict[str, float]], export_table: bool = True
+    data_dict: Dict[str, Dict[str, float]], export_table: bool = False
 ) -> Union[Tuple[pd.DataFrame, None], pd.DataFrame]:
     """Create table with descriptive statistics for all datasets with option to export"""
     df = pd.DataFrame(data_dict)
@@ -85,8 +102,17 @@ def main() -> None:
     us_data = us_data.merge(dur_consump, how="left")
     us_data = us_data.merge(save, how="left")
 
-    results_dict = us_data.describe(percentiles=[0.5]).to_dict()
-    results_df = create_summary_table(results_dict)
+    results = us_data.describe(percentiles=[0.5]).to_dict()
+    skewness = us_data.skew().to_dict()
+    kurtosis = us_data.kurtosis().to_dict()
+    results = include_statistic(
+        statistic="skewness", statistic_data=skewness, results_dict=results
+    )
+    results = include_statistic(
+        statistic="kurtosis", statistic_data=kurtosis, results_dict=results
+    )
+    results = parse_results_dict(results, DESCRIPTIVE_STATS)
+    results_df = create_summary_table(results, export_table=True)
     print(results_df)
 
 
