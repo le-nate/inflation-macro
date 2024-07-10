@@ -7,12 +7,8 @@ import sys
 from typing import Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
-import numpy as np
-import numpy.typing as npt
 import pandas as pd
 from scipy import stats
-import seaborn as sns
-import statsmodels.api as sm
 
 from src.helpers import define_other_module_log_level
 from src import ids
@@ -24,7 +20,16 @@ define_other_module_log_level("info")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
-DESCRIPTIVE_STATS = ["count", "mean", "std", "skewness", "kurtosis", "Jarque Bera"]
+DESCRIPTIVE_STATS = [
+    "count",
+    "mean",
+    "std",
+    "skewness",
+    "kurtosis",
+    "Jarque-Bera",
+    "Shapiro-Wilk",
+]
+NORMALITY_TESTS = {"Jarque-Bera": stats.jarque_bera, "Shapiro-Wilk": stats.shapiro}
 HYPOTHESIS_THRESHOLD = [0.1, 0.05, 0.001]
 
 
@@ -49,8 +54,8 @@ def include_statistic(
     return results_dict
 
 
-# TODO Calculate Jarque-Bera
-def test_jarque_bera(
+def test_normality(
+    normality_test: str,
     data: pd.DataFrame,
     date_column: str = "date",
     add_pvalue_stars: bool = False,
@@ -60,7 +65,7 @@ def test_jarque_bera(
     cols_to_test = [c for c in data.columns if date_column not in c]
     for col in cols_to_test:
         x = data[col].dropna().to_numpy()
-        test_stat, p_value = stats.jarque_bera(x)
+        test_stat, p_value = NORMALITY_TESTS[normality_test](x)
         if add_pvalue_stars:
             result = str(test_stat)
             for p_threshold in sorted(HYPOTHESIS_THRESHOLD):
@@ -68,8 +73,6 @@ def test_jarque_bera(
         results_dict[col] = result
     return results_dict
 
-
-# TODO Calculate Shapiro-Wilk for completeness (comparison to J-B)
 
 # TODO Calculate Ljung-Box
 
@@ -134,14 +137,24 @@ def main() -> None:
     results = us_data.describe(percentiles=[0.5]).to_dict()
     skewness = us_data.skew(numeric_only=True).to_dict()
     kurtosis = us_data.kurtosis(numeric_only=True).to_dict()
-    jarque_bera = test_jarque_bera(
-        data=us_data, date_column="date", add_pvalue_stars=True
+    jarque_bera = test_normality(
+        normality_test="Jarque-Bera",
+        data=us_data,
+        date_column="date",
+        add_pvalue_stars=True,
+    )
+    shapiro_wilk = test_normality(
+        normality_test="Shapiro-Wilk",
+        data=us_data,
+        date_column="date",
+        add_pvalue_stars=True,
     )
     logger.debug(
-        "skewness: %s \n kurtosis: %s \n Jarque Bera: %s",
+        "skewness: %s \n kurtosis: %s \n Jarque-Bera: %s \n Shapiro-Wilk: %s",
         skewness,
         kurtosis,
         jarque_bera,
+        shapiro_wilk,
     )
     results = include_statistic(
         statistic="skewness", statistic_data=skewness, results_dict=results
@@ -150,7 +163,10 @@ def main() -> None:
         statistic="kurtosis", statistic_data=kurtosis, results_dict=results
     )
     results = include_statistic(
-        statistic="Jarque Bera", statistic_data=jarque_bera, results_dict=results
+        statistic="Jarque-Bera", statistic_data=jarque_bera, results_dict=results
+    )
+    results = include_statistic(
+        statistic="Shapiro-Wilk", statistic_data=shapiro_wilk, results_dict=results
     )
     results = parse_results_dict(results, DESCRIPTIVE_STATS)
     results_df = create_summary_table(results, export_table=True)
