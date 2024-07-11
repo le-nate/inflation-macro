@@ -13,8 +13,9 @@ from scipy import stats
 import statsmodels.graphics.tsaplots
 import statsmodels.stats.diagnostic
 
-from src.helpers import define_other_module_log_level
-from src import ids
+from constants import ids
+from src.helpers import add_real_value_columns
+from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 
 # * Logging settings
@@ -247,7 +248,7 @@ def main() -> None:
     )
     print(us_corr)
 
-    us_data.plot.hist(bins=150, subplots=True, legend=True, layout=(1, 5))
+    us_data.plot.hist(bins=150, subplots=True, legend=True)
     _, axs = plt.subplots(5)
     for ax, c in zip(axs, us_data.drop("date", axis=1).columns.to_list()):
         statsmodels.graphics.tsaplots.plot_acf(us_data[c], lags=36, ax=ax)

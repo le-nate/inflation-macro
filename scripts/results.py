@@ -10,7 +10,7 @@ import pywt
 import seaborn as sns
 
 from src import cwt, dwt, process_camme, regression, xwt
-from src.helpers import define_other_module_log_level
+from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 
 # * Logging settings

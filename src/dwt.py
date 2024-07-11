@@ -13,7 +13,7 @@ import numpy as np
 import numpy.typing as npt
 import pywt
 
-from src.helpers import define_other_module_log_level
+from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 
 # * Logging settings

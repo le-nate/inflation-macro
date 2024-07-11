@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 import pycwt as wavelet
 
-from src.helpers import define_other_module_log_level
+from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 from src.wavelet_helpers import plot_cone_of_influence, plot_signficance_levels
 

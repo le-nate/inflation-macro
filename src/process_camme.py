@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple, Union
 
 import pandas as pd
 
-from src.helpers import define_other_module_log_level
+from src.logging_helpers import define_other_module_log_level
 from constants.camme import (
     IGNORE_HOUSING,
     IGNORE_HOUSING_YEARS,

@@ -4,7 +4,7 @@ import logging
 
 import pandas as pd
 
-from src.helpers import define_other_module_log_level
+from src.logging_helpers import define_other_module_log_level
 import src.process_camme as process_camme
 from constants.camme import IGNORE_HOUSING, IGNORE_HOUSING_YEARS, IGNORE_SUPPLEMENTS
 

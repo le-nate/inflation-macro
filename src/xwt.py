@@ -11,7 +11,7 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 import pycwt as wavelet
 
-from src.helpers import define_other_module_log_level
+from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 from src import wavelet_helpers
 
