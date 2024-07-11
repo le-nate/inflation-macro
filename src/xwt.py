@@ -1,7 +1,7 @@
 """Cross wavelet transformation"""
 
 from __future__ import division
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import logging
 import sys
 from typing import List, Tuple, Type
@@ -11,6 +11,8 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 import pycwt as wavelet
 
+from constants import ids
+from src import helpers
 from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 from src import wavelet_helpers
@@ -39,45 +41,29 @@ LEVELS = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
 class DataForXWT:
     """Holds data for XWT"""
 
-    def __init__(
-        self,
-        y1_values: npt.NDArray,
-        y2_values: npt.NDArray,
-        mother_wavelet: Type,
-        delta_t: float,
-        delta_j: float,
-        initial_scale: float,
-        levels: List[float],
-    ) -> None:
-        self.t_values = np.linspace(1, y1_values.size + 1, y1_values.size)
-        self.y1_values = y1_values
-        self.y2_values = y2_values
-        self.mother_wavelet = mother_wavelet
-        self.delta_t = delta_t
-        self.delta_j = delta_j
-        self.initial_scale = initial_scale
-        self.levels = levels
+    t_values: npt.NDArray = field(init=False)
+    y1_values: npt.NDArray
+    y2_values: npt.NDArray
+    mother_wavelet: Type
+    delta_t: float
+    delta_j: float
+    initial_scale: float
+    levels: List[float]
+
+    def __post_init__(self):
+        self.t_values = np.linspace(1, self.y1_values.size + 1, self.y1_values.size)
 
 
 @dataclass
 class ResultsFromXWT:
     """Holds results from Cross-Wavelet Transform"""
 
-    def __init__(
-        self,
-        power: npt.NDArray,
-        period: npt.NDArray,
-        significance_levels: npt.NDArray,
-        coi: npt.NDArray,
-        phase_diff_u: npt.NDArray,
-        phase_diff_v: npt.NDArray,
-    ) -> None:
-        self.power = power
-        self.period = period
-        self.significance_levels = significance_levels
-        self.coi = coi
-        self.phase_diff_u = phase_diff_u
-        self.phase_diff_v = phase_diff_v
+    power: npt.NDArray
+    period: npt.NDArray
+    significance_levels: npt.NDArray
+    coi: npt.NDArray
+    phase_diff_u: npt.NDArray
+    phase_diff_v: npt.NDArray
 
 
 def run_xwt(
@@ -258,16 +244,22 @@ def main() -> None:
     """Run script"""
 
     # * Load dataset
-    measure_1 = "MICH"
-    raw_data = retrieve_data.get_fed_data(measure_1, units="pc1", freq="m")
+    measure_1 = ids.US_INF_EXPECTATIONS
+    raw_data = retrieve_data.get_fed_data(measure_1)
     df1, _, _ = retrieve_data.clean_fed_data(raw_data)
 
-    measure_2 = "CPIAUCNS"
-    raw_data = retrieve_data.get_fed_data(measure_2, units="pc1", freq="m")
+    measure_2 = ids.US_CPI
+    raw_data = retrieve_data.get_fed_data(measure_2)
     df2, _, _ = retrieve_data.clean_fed_data(raw_data)
 
     # * Pre-process data: Align time series temporally
     dfcombo = df1.merge(df2, how="left", on="date", suffixes=("_1", "_2"))
+
+    # * Add diff in log
+    dfcombo = helpers.calculate_diff_in_log(
+        dfcombo, ["value_1", "value_2"], new_columns=False
+    )
+
     dfcombo.dropna(inplace=True)
 
     # * Pre-process data: Standardize and detrend
@@ -279,13 +271,13 @@ def main() -> None:
     mother_xwt = MOTHER_DICT[MOTHER]
 
     xwt_data = DataForXWT(
-        y1,
-        y2,
-        mother_xwt,
-        DT,
-        DJ,
-        S0,
-        LEVELS,
+        y1_values=y1,
+        y2_values=y2,
+        mother_wavelet=mother_xwt,
+        delta_t=DT,
+        delta_j=DJ,
+        initial_scale=S0,
+        levels=LEVELS,
     )
 
     results_from_xwt = run_xwt(xwt_data, ignore_strong_trends=False)

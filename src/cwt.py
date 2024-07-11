@@ -8,7 +8,7 @@ import logging
 import sys
 from dataclasses import dataclass, field
 
-from typing import List, Tuple, Type
+from typing import List, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 
 import pycwt as wavelet
 
+from constants import ids
 from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 from src.wavelet_helpers import plot_cone_of_influence, plot_signficance_levels
@@ -30,7 +31,7 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 LABEL = "Inflation (US)"
 UNITS = "%"
 
-MEASURE = "CPIAUCNS"
+MEASURE = ids.US_CPI
 
 NORMALIZE = True  # Define normalization
 DT = 1 / 12  # In years
@@ -52,25 +53,10 @@ class DataForCWT:
     delta_j: float
     initial_scale: float
     levels: List[float]
+    time_range: npt.NDArray = field(init=False)
 
-    def __init__(
-        self,
-        t_values: npt.NDArray,
-        y_values: npt.NDArray,
-        mother_wavelet: Type,
-        delta_t: float,
-        delta_j: float,
-        initial_scale: float,
-        levels: List[float],
-    ) -> None:
-        self.t_values = t_values
-        self.y_values = y_values
-        self.mother_wavelet = mother_wavelet
-        self.delta_t = delta_t
-        self.delta_j = delta_j
-        self.initial_scale = initial_scale
-        self.levels = levels
-        self.time_range()
+    def __post_init__(self):
+        self.time_range = self.time_range(self)
 
     def time_range(self) -> npt.NDArray:
         """Takes first date and creates array with date based on defined dt"""
