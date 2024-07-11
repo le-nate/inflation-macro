@@ -24,6 +24,9 @@ define_other_module_log_level("info")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
+# * Define constant currency years
+CONSTANT_DOLLAR_DATE = "2017-12-01"
+
 DESCRIPTIVE_STATS = [
     "count",
     "mean",
@@ -87,7 +90,6 @@ def test_normality(
     return results_dict
 
 
-# TODO Calculate Ljung-Box
 def conduct_ljung_box(
     data: pd.DataFrame,
     lags: List[int],
@@ -109,7 +111,6 @@ def conduct_ljung_box(
     return results_dict
 
 
-# TODO Generate correlation matrix
 def correlation_matrix_pvalues(
     data: pd.DataFrame,
     hypothesis_threshold: List[float],
@@ -139,7 +140,6 @@ def correlation_matrix_pvalues(
     return corr_matrix
 
 
-# TODO Generate summary table
 def create_summary_table(
     data_dict: Dict[str, Dict[str, Union[float, str]]], export_table: bool = False
 ) -> pd.DataFrame:
@@ -158,6 +158,11 @@ def main() -> None:
     """Run script"""
     # * Retrieve data
 
+    ## CPI
+    raw_data = retrieve_data.get_fed_data(ids.US_CPI)
+    cpi, _, _ = retrieve_data.clean_fed_data(raw_data)
+    cpi.rename(columns={"value": "cpi"}, inplace=True)
+
     ## Inflation
     raw_data = retrieve_data.get_fed_data(ids.US_CPI, units="pc1")
     inf, _, _ = retrieve_data.clean_fed_data(raw_data)
@@ -169,12 +174,12 @@ def main() -> None:
     inf_exp.rename(columns={"value": "expectation"}, inplace=True)
 
     ## Non-durables consumption, monthly
-    raw_data = retrieve_data.get_fed_data(ids.US_NONDURABLES_CONSUMPTION, units="pc1")
+    raw_data = retrieve_data.get_fed_data(ids.US_NONDURABLES_CONSUMPTION)
     nondur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
     nondur_consump.rename(columns={"value": "nondurable"}, inplace=True)
 
     ## Durables consumption, monthly
-    raw_data = retrieve_data.get_fed_data(ids.US_DURABLES_CONSUMPTION, units="pc1")
+    raw_data = retrieve_data.get_fed_data(ids.US_DURABLES_CONSUMPTION)
     dur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
     dur_consump.rename(columns={"value": "durable"}, inplace=True)
 
@@ -184,13 +189,27 @@ def main() -> None:
     save.rename(columns={"value": "savings"}, inplace=True)
 
     # * Merge dataframes to align dates and remove extras
-    us_data = inf.merge(inf_exp, how="left")
+    us_data = cpi.merge(inf, how="left")
+    us_data = us_data.merge(inf_exp, how="left")
     us_data = us_data.merge(nondur_consump, how="left")
     us_data = us_data.merge(dur_consump, how="left")
     us_data = us_data.merge(save, how="left")
 
     # * Drop NaNs
     us_data.dropna(inplace=True)
+
+    # * Add real value columns
+    logger.info(
+        "Using constant dollars from %s, CPI: %s",
+        CONSTANT_DOLLAR_DATE,
+        us_data[us_data["date"] == pd.Timestamp(CONSTANT_DOLLAR_DATE)]["cpi"].iat[0],
+    )
+    us_data = add_real_value_columns(
+        data=us_data,
+        nominal_columns=["nondurable", "durable", "savings"],
+        cpi_column="cpi",
+        constant_date=CONSTANT_DOLLAR_DATE,
+    )
 
     print(us_data.head())
 
@@ -211,14 +230,6 @@ def main() -> None:
     )
     ljung_box = conduct_ljung_box(
         data=us_data, lags=[15], date_column="date", add_pvalue_stars=True
-    )
-    logger.debug(
-        "skewness: %s \n kurtosis: %s \n Jarque-Bera: %s \n Shapiro-Wilk: %s \n Ljung-Box: %s",
-        skewness,
-        kurtosis,
-        jarque_bera,
-        shapiro_wilk,
-        ljung_box,
     )
     results = include_statistic(
         statistic="skewness", statistic_data=skewness, results_dict=results
