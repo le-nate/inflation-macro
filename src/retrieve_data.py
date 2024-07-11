@@ -1,20 +1,55 @@
 """Retrieve data for analysis via API from statistics agencies and central banks"""
 
+import logging
 import json
 import os
+import sys
 
 from dotenv import load_dotenv
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import seaborn as sns
 import requests
 import xmltodict
+
+from src.helpers import define_other_module_log_level
+from src import ids
+
+# * Logging settings
+logger = logging.getLogger(__name__)
+define_other_module_log_level("info")
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 
 ## Retrieve API credentials
 load_dotenv()
 BDF_KEY = os.getenv("BDF_KEY")
 FED_KEY = os.getenv("FED_KEY")
 INSEE_AUTH = os.getenv("INSEE_AUTH")
+
+# * Define constant currency years
+CONSTANT_DOLLAR_DATE = "2017-12-01"
+
+
+def convert_to_real_value(
+    nominal_value: float, cpi_t: float, cpi_constant: float
+) -> pd.DataFrame:
+    """Adjust values to constant dollar amount based on the CPI measure and year defined"""
+    return (nominal_value * cpi_constant) / cpi_t
+
+
+def convert_column_to_real_value(
+    data: pd.DataFrame, column: str, cpi_column: str, constant_date: int
+) -> pd.DataFrame:
+    """Apply real value conversion to column with constant year's CPI as base"""
+    cpi_constant = data[data["date"] == pd.Timestamp(f"{constant_date}")][
+        cpi_column
+    ].iat[0]
+    return data.apply(
+        lambda x: convert_to_real_value(x[column], x[cpi_column], cpi_constant), axis=1
+    )
 
 
 def get_fed_data(series: str, no_headers: bool = True, **kwargs) -> str:
@@ -267,3 +302,70 @@ def data_to_time_series(df, index_column, measure=None):
     df.set_index(index_column, inplace=True)
     df = df.astype(float)
     return df
+
+
+def main() -> None:
+    """Run script"""
+    # * Retrieve data
+
+    ## CPI
+    raw_data = get_fed_data(ids.US_CPI)
+    cpi, _, _ = clean_fed_data(raw_data)
+    cpi.rename(columns={"value": "cpi"}, inplace=True)
+
+    ## Inflation
+    raw_data = get_fed_data(ids.US_CPI, units="pc1")
+    inf, _, _ = clean_fed_data(raw_data)
+    inf.rename(columns={"value": "inflation"}, inplace=True)
+
+    ## Inflation expectations
+    raw_data = get_fed_data(ids.US_INF_EXPECTATIONS)
+    inf_exp, _, _ = clean_fed_data(raw_data)
+    inf_exp.rename(columns={"value": "expectation"}, inplace=True)
+
+    ## Non-durables consumption, monthly
+    raw_data = get_fed_data(ids.US_NONDURABLES_CONSUMPTION)
+    nondur_consump, _, _ = clean_fed_data(raw_data)
+    nondur_consump.rename(columns={"value": "nondurable"}, inplace=True)
+
+    ## Durables consumption, monthly
+    raw_data = get_fed_data(ids.US_DURABLES_CONSUMPTION)
+    dur_consump, _, _ = clean_fed_data(raw_data)
+    dur_consump.rename(columns={"value": "durable"}, inplace=True)
+
+    ## Personal savings rate
+    raw_data = get_fed_data(ids.US_SAVINGS)
+    save, _, _ = clean_fed_data(raw_data)
+    save.rename(columns={"value": "savings"}, inplace=True)
+
+    # * Merge dataframes to align dates and remove extras
+    us_data = cpi.merge(inf, how="left")
+    us_data = us_data.merge(inf_exp, how="left")
+    us_data = us_data.merge(nondur_consump, how="left")
+    us_data = us_data.merge(dur_consump, how="left")
+    us_data = us_data.merge(save, how="left")
+
+    # * Drop NaNs
+    us_data.dropna(inplace=True)
+
+    print(us_data.head())
+
+    # * Convert to constant dollars
+    us_data["real_nondurable"] = convert_column_to_real_value(
+        data=us_data,
+        column="nondurable",
+        cpi_column="cpi",
+        constant_date=CONSTANT_DOLLAR_DATE,
+    )
+    print(us_data.head())
+
+    us_melt = pd.melt(us_data[["date", "nondurable", "real_nondurable"]], "date")
+    print(us_melt.head())
+    print(us_melt.tail())
+
+    sns.lineplot(us_melt, x="date", y="value", hue="variable")
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()
