@@ -2,6 +2,7 @@
 
 from typing import Dict, Generator, List
 
+import numpy as np
 import pandas as pd
 
 from src import retrieve_data
@@ -33,4 +34,19 @@ def add_real_value_columns(
         data[f"real_{col}"] = retrieve_data.convert_column_to_real_value(
             data=data, column=col, **kwargs
         )
+    return data
+
+
+def calculate_diff_in_log(
+    data: pd.DataFrame, columns: List[str], new_columns: bool = True
+) -> pd.DataFrame:
+    """
+    Calculate rolling difference of log(values), adding as new column if defined
+    """
+    for col in columns:
+        if new_columns:
+            col_name = f"diff_log_{col}"
+        else:
+            col_name = col
+        data[col_name] = 100 * np.log(data[col]).diff()
     return data

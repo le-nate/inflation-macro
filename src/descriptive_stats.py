@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 import sys
 
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +14,7 @@ import statsmodels.graphics.tsaplots
 import statsmodels.stats.diagnostic
 
 from constants import ids
-from src.helpers import add_real_value_columns
+from src.helpers import add_real_value_columns, calculate_diff_in_log
 from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 
@@ -210,6 +210,9 @@ def main() -> None:
         cpi_column="cpi",
         constant_date=CONSTANT_DOLLAR_DATE,
     )
+    us_data = calculate_diff_in_log(
+        data=us_data, columns=["cpi", "real_nondurable", "real_durable", "real_savings"]
+    )
 
     print(us_data.head())
 
@@ -259,7 +262,7 @@ def main() -> None:
     )
     print(us_corr)
 
-    us_data.plot.hist(bins=150, subplots=True, legend=True)
+    us_data.plot.hist(subplots=True, legend=True, sharex=False)
     _, axs = plt.subplots(5)
     for ax, c in zip(axs, us_data.drop("date", axis=1).columns.to_list()):
         statsmodels.graphics.tsaplots.plot_acf(us_data[c], lags=36, ax=ax)
