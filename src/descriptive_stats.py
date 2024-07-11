@@ -9,6 +9,8 @@ from typing import Dict, List, Tuple, Union
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy import stats
+import statsmodels.graphics.tsaplots
+import statsmodels.stats.diagnostic
 
 from src.helpers import define_other_module_log_level
 from src import ids
@@ -28,6 +30,7 @@ DESCRIPTIVE_STATS = [
     "kurtosis",
     "Jarque-Bera",
     "Shapiro-Wilk",
+    "Ljung-Box",
 ]
 NORMALITY_TESTS = {"Jarque-Bera": stats.jarque_bera, "Shapiro-Wilk": stats.shapiro}
 HYPOTHESIS_THRESHOLD = [0.1, 0.05, 0.001]
@@ -60,9 +63,9 @@ def test_normality(
     date_column: str = "date",
     add_pvalue_stars: bool = False,
 ) -> Dict[str, str]:
-    """Generate dictionary with Jarque-Bera test results for each column"""
+    """Generate dictionary with Jarque-Bera test results for each dataset"""
     results_dict = {}
-    cols_to_test = [c for c in data.columns if date_column not in c]
+    cols_to_test = data.drop(date_column, axis=1).columns.to_list()
     for col in cols_to_test:
         x = data[col].dropna().to_numpy()
         test_stat, p_value = NORMALITY_TESTS[normality_test](x)
@@ -75,6 +78,28 @@ def test_normality(
 
 
 # TODO Calculate Ljung-Box
+def conduct_ljung_box(
+    data: pd.DataFrame,
+    lags: List[int],
+    date_column: str = "date",
+    add_pvalue_stars: bool = False,
+) -> Dict[str, str]:
+    """Generate dictionary with Ljung-Box test results for each dataset"""
+    results_dict = {}
+    cols_to_test = data.drop(date_column, axis=1).columns.to_list()
+    for col in cols_to_test:
+        test_results = statsmodels.stats.diagnostic.acorr_ljungbox(data[col], lags=lags)
+        test_stat, p_value = (
+            test_results["lb_stat"].iat[0],
+            test_results["lb_pvalue"].iat[0],
+        )
+        if add_pvalue_stars:
+            result = str(test_stat)
+            for p_threshold in sorted(HYPOTHESIS_THRESHOLD):
+                result += "*" if p_value <= p_threshold else ""
+        results_dict[col] = result
+    return results_dict
+
 
 # TODO Generate correlation matrix
 
@@ -149,12 +174,16 @@ def main() -> None:
         date_column="date",
         add_pvalue_stars=True,
     )
+    ljung_box = conduct_ljung_box(
+        data=us_data, lags=[15], date_column="date", add_pvalue_stars=True
+    )
     logger.debug(
-        "skewness: %s \n kurtosis: %s \n Jarque-Bera: %s \n Shapiro-Wilk: %s",
+        "skewness: %s \n kurtosis: %s \n Jarque-Bera: %s \n Shapiro-Wilk: %s \n Ljung-Box: %s",
         skewness,
         kurtosis,
         jarque_bera,
         shapiro_wilk,
+        ljung_box,
     )
     results = include_statistic(
         statistic="skewness", statistic_data=skewness, results_dict=results
@@ -168,11 +197,18 @@ def main() -> None:
     results = include_statistic(
         statistic="Shapiro-Wilk", statistic_data=shapiro_wilk, results_dict=results
     )
+    results = include_statistic(
+        statistic="Ljung-Box", statistic_data=ljung_box, results_dict=results
+    )
     results = parse_results_dict(results, DESCRIPTIVE_STATS)
     results_df = create_summary_table(results, export_table=True)
     print(results_df)
 
     us_data.plot.hist(bins=150, subplots=True, legend=True, layout=(1, 5))
+    fig, axs = plt.subplots(5)
+    for ax, c in zip(axs, us_data.drop("date", axis=1).columns.to_list()):
+        statsmodels.graphics.tsaplots.plot_acf(us_data[c], lags=36, ax=ax)
+        ax.title.set_text(c)
     plt.show()
 
 
