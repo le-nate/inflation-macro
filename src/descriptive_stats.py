@@ -7,6 +7,7 @@ import sys
 from typing import Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from scipy import stats
 import statsmodels.graphics.tsaplots
@@ -57,6 +58,16 @@ def include_statistic(
     return results_dict
 
 
+def add_p_value_stars(
+    test_statistic: Union[int, float], p_value: float, hypothesis_threshold: List[float]
+) -> str:
+    """Add stars (*) for each p value threshold that the test statistic falls below"""
+    star_test_statistic = str(test_statistic)
+    for p_threshold in sorted(hypothesis_threshold):
+        star_test_statistic += "*" if p_value <= p_threshold else ""
+    return star_test_statistic
+
+
 def test_normality(
     normality_test: str,
     data: pd.DataFrame,
@@ -70,9 +81,7 @@ def test_normality(
         x = data[col].dropna().to_numpy()
         test_stat, p_value = NORMALITY_TESTS[normality_test](x)
         if add_pvalue_stars:
-            result = str(test_stat)
-            for p_threshold in sorted(HYPOTHESIS_THRESHOLD):
-                result += "*" if p_value <= p_threshold else ""
+            result = add_p_value_stars(test_stat, p_value, HYPOTHESIS_THRESHOLD)
         results_dict[col] = result
     return results_dict
 
@@ -94,28 +103,53 @@ def conduct_ljung_box(
             test_results["lb_pvalue"].iat[0],
         )
         if add_pvalue_stars:
-            result = str(test_stat)
-            for p_threshold in sorted(HYPOTHESIS_THRESHOLD):
-                result += "*" if p_value <= p_threshold else ""
+            result = add_p_value_stars(test_stat, p_value, HYPOTHESIS_THRESHOLD)
         results_dict[col] = result
     return results_dict
 
 
 # TODO Generate correlation matrix
+def correlation_matrix_pvalues(
+    data: pd.DataFrame,
+    hypothesis_threshold: List[float],
+    decimals: int = 2,
+    display: bool = False,
+    export_table: bool = False,
+) -> pd.DataFrame:
+    """Calculate pearson correlation and p-values and add asterisks
+    to relevant values in table"""
+    rho = data.corr()
+    pval = data.corr(method=lambda x, y: stats.pearsonr(x, y)[1]) - np.eye(*rho.shape)
+    p = pval.applymap(
+        lambda x: "".join(["*" for threshold in hypothesis_threshold if x <= threshold])
+    )
+    corr_matrix = rho.round(decimals).astype(str) + p
+    if display:
+        cols = data.columns.to_list()
+        print(f"P-values benchmarks: {hypothesis_threshold}")
+        for c in cols:
+            print(c)
+            print(f"{c} p-values: \n{pval[c]}")
+    if export_table:
+        # * Get results directory
+        parent_dir = Path(__file__).parents[1]
+        export_file = parent_dir / "results" / "correlation_matrix.html"
+        corr_matrix.to_html(export_file)
+    return corr_matrix
 
 
 # TODO Generate summary table
 def create_summary_table(
     data_dict: Dict[str, Dict[str, Union[float, str]]], export_table: bool = False
-) -> Union[Tuple[pd.DataFrame, None], pd.DataFrame]:
+) -> pd.DataFrame:
     """Create table with descriptive statistics for all datasets with option to export"""
     df = pd.DataFrame(data_dict)
     if export_table:
-        # * Get data directory folder
+        # * Get results directory
         parent_dir = Path(__file__).parents[1]
         export_file = parent_dir / "results" / "descriptive_stats.html"
 
-        return df, df.to_html(export_file)
+        df.to_html(export_file)
     return df
 
 
@@ -204,11 +238,21 @@ def main() -> None:
     results_df = create_summary_table(results, export_table=True)
     print(results_df)
 
+    us_corr = correlation_matrix_pvalues(
+        data=us_data,
+        hypothesis_threshold=HYPOTHESIS_THRESHOLD,
+        decimals=2,
+        display=False,
+        export_table=True,
+    )
+    print(us_corr)
+
     us_data.plot.hist(bins=150, subplots=True, legend=True, layout=(1, 5))
-    fig, axs = plt.subplots(5)
+    _, axs = plt.subplots(5)
     for ax, c in zip(axs, us_data.drop("date", axis=1).columns.to_list()):
         statsmodels.graphics.tsaplots.plot_acf(us_data[c], lags=36, ax=ax)
         ax.title.set_text(c)
+    plt.tight_layout()
     plt.show()
 
 
