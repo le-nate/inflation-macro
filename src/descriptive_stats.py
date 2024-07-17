@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 import sys
 
-from typing import Dict, List, Union
+from typing import Any, Dict, Hashable, List, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -140,6 +140,17 @@ def correlation_matrix_pvalues(
     return corr_matrix
 
 
+def complete_summary_results_dict(
+    initial_results_dict: Dict[Hashable, Any], data_dict: Dict[str, Dict[str, str]]
+) -> Dict[str, Dict[str, Union[float, str]]]:
+    """Combine statistical test results in a single dict"""
+    for stat_test, result in data_dict.items():
+        initial_results_dict = include_statistic(
+            stat_test, result, initial_results_dict
+        )
+    return initial_results_dict
+
+
 def create_summary_table(
     data_dict: Dict[str, Dict[str, Union[float, str]]], export_table: bool = False
 ) -> pd.DataFrame:
@@ -217,40 +228,27 @@ def main() -> None:
     print(us_data.head())
 
     results = us_data.describe(percentiles=[0.5]).to_dict()
-    skewness = us_data.skew(numeric_only=True).to_dict()
-    kurtosis = us_data.kurtosis(numeric_only=True).to_dict()
-    jarque_bera = test_normality(
+    stats_tests = {}
+    stats_tests["skewness"] = us_data.skew(numeric_only=True).to_dict()
+    stats_tests["kurtosis"] = us_data.kurtosis(numeric_only=True).to_dict()
+    stats_tests["Jarque-Bera"] = test_normality(
         normality_test="Jarque-Bera",
         data=us_data,
         date_column="date",
         add_pvalue_stars=True,
     )
-    shapiro_wilk = test_normality(
+    stats_tests["Shapiro-Wilk"] = test_normality(
         normality_test="Shapiro-Wilk",
         data=us_data,
         date_column="date",
         add_pvalue_stars=True,
     )
-    ljung_box = conduct_ljung_box(
+    stats_tests["Ljung-Box"] = conduct_ljung_box(
         data=us_data, lags=[15], date_column="date", add_pvalue_stars=True
     )
-    results = include_statistic(
-        statistic="skewness", statistic_data=skewness, results_dict=results
-    )
-    results = include_statistic(
-        statistic="kurtosis", statistic_data=kurtosis, results_dict=results
-    )
-    results = include_statistic(
-        statistic="Jarque-Bera", statistic_data=jarque_bera, results_dict=results
-    )
-    results = include_statistic(
-        statistic="Shapiro-Wilk", statistic_data=shapiro_wilk, results_dict=results
-    )
-    results = include_statistic(
-        statistic="Ljung-Box", statistic_data=ljung_box, results_dict=results
-    )
+    results = complete_summary_results_dict(results, stats_tests)
     results = parse_results_dict(results, DESCRIPTIVE_STATS)
-    results_df = create_summary_table(results, export_table=True)
+    results_df = create_summary_table(results, export_table=False)
     print(results_df)
 
     us_corr = correlation_matrix_pvalues(
@@ -258,11 +256,10 @@ def main() -> None:
         hypothesis_threshold=HYPOTHESIS_THRESHOLD,
         decimals=2,
         display=False,
-        export_table=True,
+        export_table=False,
     )
     print(us_corr)
 
-    us_data.plot.hist(subplots=True, legend=True, sharex=False)
     _, axs = plt.subplots(5)
     for ax, c in zip(axs, us_data.drop("date", axis=1).columns.to_list()):
         statsmodels.graphics.tsaplots.plot_acf(us_data[c], lags=36, ax=ax)
