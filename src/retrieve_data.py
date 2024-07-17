@@ -14,8 +14,9 @@ import seaborn as sns
 import requests
 import xmltodict
 
-from src.logging_helpers import define_other_module_log_level
 from constants import ids
+from src.helpers import convert_column_to_real_value
+from src.logging_helpers import define_other_module_log_level
 
 # * Logging settings
 logger = logging.getLogger(__name__)
@@ -31,25 +32,6 @@ INSEE_AUTH = os.getenv("INSEE_AUTH")
 
 # * Define constant currency years
 CONSTANT_DOLLAR_DATE = "2017-12-01"
-
-
-def convert_to_real_value(
-    nominal_value: float, cpi_t: float, cpi_constant: float
-) -> pd.DataFrame:
-    """Adjust values to constant dollar amount based on the CPI measure and year defined"""
-    return (nominal_value * cpi_constant) / cpi_t
-
-
-def convert_column_to_real_value(
-    data: pd.DataFrame, column: str, cpi_column: str, constant_date: int
-) -> pd.DataFrame:
-    """Apply real value conversion to column with constant year's CPI as base"""
-    cpi_constant = data[data["date"] == pd.Timestamp(f"{constant_date}")][
-        cpi_column
-    ].iat[0]
-    return data.apply(
-        lambda x: convert_to_real_value(x[column], x[cpi_column], cpi_constant), axis=1
-    )
 
 
 def get_fed_data(series: str, no_headers: bool = True, **kwargs) -> str:

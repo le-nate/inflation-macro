@@ -5,8 +5,6 @@ from typing import Dict, Generator, List
 import numpy as np
 import pandas as pd
 
-from src import retrieve_data
-
 
 def nested_dict_values(nested_dict: Dict) -> Generator[any, any, any]:
     """Extract nested dict values"""
@@ -26,12 +24,31 @@ def nested_list_values(nested_list: List[List[str]]) -> Generator[any, any, any]
             yield v
 
 
+def convert_to_real_value(
+    nominal_value: float, cpi_t: float, cpi_constant: float
+) -> pd.DataFrame:
+    """Adjust values to constant dollar amount based on the CPI measure and year defined"""
+    return (nominal_value * cpi_constant) / cpi_t
+
+
+def convert_column_to_real_value(
+    data: pd.DataFrame, column: str, cpi_column: str, constant_date: int
+) -> pd.DataFrame:
+    """Apply real value conversion to column with constant year's CPI as base"""
+    cpi_constant = data[data["date"] == pd.Timestamp(f"{constant_date}")][
+        cpi_column
+    ].iat[0]
+    return data.apply(
+        lambda x: convert_to_real_value(x[column], x[cpi_column], cpi_constant), axis=1
+    )
+
+
 def add_real_value_columns(
     data: pd.DataFrame, nominal_columns: List[str], **kwargs
 ) -> pd.DataFrame:
     """Convert nominal to real values for each column in list"""
     for col in nominal_columns:
-        data[f"real_{col}"] = retrieve_data.convert_column_to_real_value(
+        data[f"real_{col}"] = convert_column_to_real_value(
             data=data, column=col, **kwargs
         )
     return data
