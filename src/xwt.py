@@ -37,6 +37,22 @@ MOTHER_DICT = {
 LEVELS = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]
 
 
+XWT_PLOT_PROPS = {
+    "cmap": "jet",
+    "sig_colors": "k",
+    "sig_linewidths": 2,
+    "coi_color": "k",
+    "coi_alpha": 0.3,
+    "coi_hatch": "--",
+    "phase_diff_units": "width",
+    "phase_diff_angles": "uv",
+    "phase_diff_pivot": "mid",
+    "phase_diff_linewidth": 0.5,
+    "phase_diff_edgecolor": "k",
+    "phase_diff_alpha": 0.7,
+}
+
+
 @dataclass
 class DataForXWT:
     """Holds data for XWT"""
@@ -257,10 +273,11 @@ def main() -> None:
 
     # * Add diff in log
     dfcombo = helpers.calculate_diff_in_log(
-        dfcombo, ["value_1", "value_2"], new_columns=False
+        dfcombo, ["value_1", "value_2"], new_columns=True
     )
 
     dfcombo.dropna(inplace=True)
+    print(dfcombo.head())
 
     # * Pre-process data: Standardize and detrend
     y1 = dfcombo["value_1"].to_numpy()
@@ -282,47 +299,63 @@ def main() -> None:
 
     results_from_xwt = run_xwt(xwt_data, ignore_strong_trends=False)
 
-    # * Plot XWT power spectrum
-    _, ax = plt.subplots(1, 1, figsize=(10, 8), sharex=True)
+    # * For diff in log
+    y2_diff_log = dfcombo["diff_log_value_2"].to_numpy()
+    y2_diff_log = wavelet_helpers.standardize_data_for_xwt(
+        y2_diff_log, detrend=True, remove_mean=False
+    )
 
-    xwt_plot_props = {
-        "cmap": "jet",
-        "sig_colors": "k",
-        "sig_linewidths": 2,
-        "coi_color": "k",
-        "coi_alpha": 0.3,
-        "coi_hatch": "--",
-        "phase_diff_units": "width",
-        "phase_diff_angles": "uv",
-        "phase_diff_pivot": "mid",
-        "phase_diff_linewidth": 0.5,
-        "phase_diff_edgecolor": "k",
-        "phase_diff_alpha": 0.7,
-    }
+    mother_xwt = MOTHER_DICT[MOTHER]
+
+    diff_log_xwt_data = DataForXWT(
+        y1_values=y1,
+        y2_values=y2_diff_log,
+        mother_wavelet=mother_xwt,
+        delta_t=DT,
+        delta_j=DJ,
+        initial_scale=S0,
+        levels=LEVELS,
+    )
+
+    diff_log_results_from_xwt = run_xwt(diff_log_xwt_data, ignore_strong_trends=False)
+
+    # * Plot XWT power spectrum
+    _, axs = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 
     plot_xwt(
-        ax,
+        axs[0],
         xwt_data,
         results_from_xwt,
         include_significance=True,
         include_cone_of_influence=True,
         include_phase_difference=True,
-        **xwt_plot_props,
+        **XWT_PLOT_PROPS,
+    )
+
+    plot_xwt(
+        axs[1],
+        diff_log_xwt_data,
+        diff_log_results_from_xwt,
+        include_significance=True,
+        include_cone_of_influence=True,
+        include_phase_difference=True,
+        **XWT_PLOT_PROPS,
     )
 
     # * Invert y axis
-    ax.set_ylim(ax.get_ylim()[::-1])
+    for ax, results in zip(axs, [results_from_xwt, diff_log_results_from_xwt]):
+        ax.set_ylim(ax.get_ylim()[::-1])
 
-    # * Set y axis tick labels
-    y_ticks = 2 ** np.arange(
-        np.ceil(np.log2(results_from_xwt.period.min())),
-        np.ceil(np.log2(results_from_xwt.period.max())),
-    )
-    ax.set_yticks(np.log2(y_ticks))
-    ax.set_yticklabels(y_ticks)
+        # * Set y axis tick labels
+        y_ticks = 2 ** np.arange(
+            np.ceil(np.log2(results.period.min())),
+            np.ceil(np.log2(results.period.max())),
+        )
+        ax.set_yticks(np.log2(y_ticks))
+        ax.set_yticklabels(y_ticks)
 
-    ax.set_title("Inflation Expectations X CPI Inflation (US)")
-    ax.set_ylabel("Period (years)")
+        ax.set_title("Inflation Expectations X CPI Inflation (US)")
+        ax.set_ylabel("Period (years)")
 
     plt.show()
 
