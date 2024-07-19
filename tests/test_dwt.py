@@ -7,7 +7,7 @@ import sys
 import pywt
 
 from src import dwt
-from src.helpers import define_other_module_log_level
+from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 
 # * Logging settings

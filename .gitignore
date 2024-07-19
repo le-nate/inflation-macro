@@ -155,6 +155,9 @@ cython_debug/
 # For data
 data
 
+# For results
+results
+
 # For API credentials
 creds.py
 
