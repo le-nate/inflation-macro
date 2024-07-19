@@ -9,7 +9,9 @@ import pandas as pd
 import pywt
 import seaborn as sns
 
-from src import cwt, dwt, process_camme, regression, xwt
+from constants import ids
+from src import descriptive_stats, dwt, process_camme, regression
+from src import helpers
 from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 
@@ -23,57 +25,89 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 MOTHER = "db4"
 mother_wavelet = pywt.Wavelet(MOTHER)
 
+# * Define constant currency years
+CONSTANT_DOLLAR_DATE = "2017-12-01"
+
+# * Define statistical tests to run on data
+STATISTICS_TESTS = [
+    "count",
+    "mean",
+    "std",
+    "skewness",
+    "kurtosis",
+    "Jarque-Bera",
+    "Shapiro-Wilk",
+    "Ljung-Box",
+]
+HYPOTHESIS_THRESHOLD = [0.1, 0.05, 0.001]
+
 
 # %% [markdown]
 ## Pre-process data
 # US data
 
 #  %%
-# * Measured inflation
-raw_data = retrieve_data.get_fed_data("CPIAUCSL", units="pc1", freq="m")
+# * CPI
+raw_data = retrieve_data.get_fed_data(ids.US_CPI)
+cpi, _, _ = retrieve_data.clean_fed_data(raw_data)
+cpi.rename(columns={"value": "cpi"}, inplace=True)
+
+# * Inflation rate
+raw_data = retrieve_data.get_fed_data(ids.US_CPI, units="pc1", freq="m")
 measured_inf, _, _ = retrieve_data.clean_fed_data(raw_data)
 measured_inf.rename(columns={"value": "inflation"}, inplace=True)
-print("Descriptive stats for measured inflation")
-print(measured_inf.describe())
 
 # * Inflation expectations
-raw_data = retrieve_data.get_fed_data("MICH")
+raw_data = retrieve_data.get_fed_data(ids.US_INF_EXPECTATIONS)
 inf_exp, _, _ = retrieve_data.clean_fed_data(raw_data)
 inf_exp.rename(columns={"value": "expectation"}, inplace=True)
-print("Descriptive stats for inflation expectations")
-print(inf_exp.describe())
-
-# * Inflation expectations (percent change)
-raw_data = retrieve_data.get_fed_data("MICH", units="pc1")
-inf_exp_perc, _, _ = retrieve_data.clean_fed_data(raw_data)
-inf_exp_perc.rename(columns={"value": "expectation_%_chg"}, inplace=True)
-print("Descriptive stats for inflation expectations (percent change)")
-print(inf_exp_perc.describe())
 
 # * Non-durables consumption, monthly
-raw_data = retrieve_data.get_fed_data("PCEND", units="pc1")
+raw_data = retrieve_data.get_fed_data(ids.US_NONDURABLES_CONSUMPTION)
 nondur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
 nondur_consump.rename(columns={"value": "nondurable"}, inplace=True)
 
 # * Durables consumption, monthly
-raw_data = retrieve_data.get_fed_data("PCEDG", units="pc1")
+raw_data = retrieve_data.get_fed_data(ids.US_DURABLES_CONSUMPTION)
 dur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
 dur_consump.rename(columns={"value": "durable"}, inplace=True)
 
-# * Personal savings rate
-raw_data = retrieve_data.get_fed_data("PSAVERT")  # , units="pc1")
+# * Personal savings
+raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS)
 save, _, _ = retrieve_data.clean_fed_data(raw_data)
 save.rename(columns={"value": "savings"}, inplace=True)
 
+# * Personal savings rate
+raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS_RATE)
+save_rate, _, _ = retrieve_data.clean_fed_data(raw_data)
+save_rate.rename(columns={"value": "savings_rate"}, inplace=True)
+
 # * Merge dataframes to align dates and remove extras
-us_data = measured_inf.merge(inf_exp, how="left")
-us_data = us_data.merge(inf_exp_perc, how="left")
+us_data = cpi.merge(measured_inf, how="left")
+us_data = us_data.merge(inf_exp, how="left")
 us_data = us_data.merge(nondur_consump, how="left")
 us_data = us_data.merge(dur_consump, how="left")
 us_data = us_data.merge(save, how="left")
+us_data = us_data.merge(save_rate, how="left")
 
 # * Remove rows without data for all measures
 us_data.dropna(inplace=True)
+
+# * Add real value columns
+logger.info(
+    "Using constant dollars from %s, CPI: %s",
+    CONSTANT_DOLLAR_DATE,
+    us_data[us_data["date"] == pd.Timestamp(CONSTANT_DOLLAR_DATE)]["cpi"].iat[0],
+)
+us_data = helpers.add_real_value_columns(
+    data=us_data,
+    nominal_columns=["nondurable", "durable", "savings"],
+    cpi_column="cpi",
+    constant_date=CONSTANT_DOLLAR_DATE,
+)
+us_data = helpers.calculate_diff_in_log(
+    data=us_data, columns=["cpi", "real_nondurable", "real_durable", "real_savings"]
+)
 
 usa_sliced = pd.concat([us_data.head(), us_data.tail()])
 usa_sliced
@@ -81,8 +115,13 @@ usa_sliced
 # %% [markdown]
 # French data
 # %%
+# * CPI
+raw_data = retrieve_data.get_fed_data(ids.FR_CPI)
+fr_cpi, _, _ = retrieve_data.clean_fed_data(raw_data)
+fr_cpi.rename(columns={"value": "cpi"}, inplace=True)
+
 # * Measured inflation
-raw_data = retrieve_data.get_fed_data("FRACPIALLMINMEI", units="pc1", freq="m")
+raw_data = retrieve_data.get_fed_data(ids.FR_CPI, units="pc1", freq="m")
 fr_inf, _, _ = retrieve_data.clean_fed_data(raw_data)
 fr_inf.rename(columns={"value": "inflation"}, inplace=True)
 
@@ -102,22 +141,23 @@ fr_exp = pd.pivot_table(fr_exp_melt, index="date", aggfunc="mean")
 fr_exp.rename(columns={"value": "expectation"}, inplace=True)
 
 # * Food consumption
-raw_data = retrieve_data.get_insee_data(series_id="011794482")
+raw_data = retrieve_data.get_insee_data(ids.FR_FOOD_CONSUMPTION)
 fr_food_cons, _, _ = retrieve_data.clean_insee_data(raw_data)
 fr_food_cons.rename(columns={"value": "food"}, inplace=True)
 
 # * Goods consumption
-raw_data = retrieve_data.get_insee_data(series_id="011794487")
+raw_data = retrieve_data.get_insee_data(ids.FR_GOODS_CONSUMPTION)
 fr_goods_cons, _, _ = retrieve_data.clean_insee_data(raw_data)
 fr_goods_cons.rename(columns={"value": "goods"}, inplace=True)
 
 # * Durables consumption
-raw_data = retrieve_data.get_insee_data(series_id="011794493")
+raw_data = retrieve_data.get_insee_data(ids.FR_DURABLES_CONSUMPTION)
 fr_dur_cons, _, _ = retrieve_data.clean_insee_data(raw_data)
 fr_dur_cons.rename(columns={"value": "durables"}, inplace=True)
 
 # %%
-fr_data = fr_inf.merge(fr_exp.reset_index(), how="left")
+fr_data = fr_cpi.merge(fr_inf, how="left")
+fr_data = fr_data.merge(fr_exp.reset_index(), how="left")
 fr_data = fr_data.merge(fr_food_cons, how="left")
 fr_data = fr_data.merge(fr_goods_cons, how="left")
 fr_data = fr_data.merge(fr_dur_cons, how="left")
@@ -166,7 +206,7 @@ plt.suptitle("Inflation Rates, US and France")
 plt.tight_layout()
 
 # %%[markdown]
-## Descriptive statistics
+## Table 1 Descriptive statistics
 
 # %%
 usa_melt = pd.melt(us_data, ["date"])
@@ -179,17 +219,39 @@ _, (bx) = plt.subplots(1, 1)
 measures_to_plot = ["nondurable", "durable"]
 data = usa_melt[usa_melt["variable"].isin(measures_to_plot)]
 bx = sns.lineplot(data=data, x="date", y="Billions ($)", hue="variable", ax=bx)
-plt.title("Consumption levels, United States")
+plt.title("Real consumption levels, United States (2017 dollars)")
 
 # %% [markdown]
 ##### Figure 3 - Distribution of Inflation Expectations, Nondurables Consumption, Durables Consumption, and Savings (US)
 # %%
-sns.pairplot(us_data, corner=True, kind="reg", plot_kws={"ci": None})
+plot_columns = [
+    "inflation",
+    "expectation",
+    "diff_log_real_nondurable",
+    "diff_log_real_durable",
+    "diff_log_real_savings",
+]
+sns.pairplot(us_data[plot_columns], corner=True, kind="reg", plot_kws={"ci": None})
 
 # %% [markdown]
 ##### Table 1: Descriptive statistics
 # %%
-us_data.describe()
+descriptive_statistics_results = descriptive_stats.generate_descriptive_statistics(
+    us_data, STATISTICS_TESTS, export_table=False
+)
+descriptive_statistics_results
+
+# %% [markdown]
+##### Table XX: Correlation matrix
+# %%
+us_corr = descriptive_stats.correlation_matrix_pvalues(
+    data=us_data[[c for c in us_data.columns if "log" in c]],
+    hypothesis_threshold=HYPOTHESIS_THRESHOLD,
+    decimals=2,
+    display=False,
+    export_table=False,
+)
+us_corr
 
 # %% [markdown]
 ##### Figure XX - Time series: Inflation Expectations, Food Consumption, Durables Consumption (France)
