@@ -38,17 +38,9 @@ DESCRIPTIVE_STATS = [
     "Ljung-Box",
 ]
 NORMALITY_TESTS = {"Jarque-Bera": stats.jarque_bera, "Shapiro-Wilk": stats.shapiro}
+PANDAS_METHODS = ["count", "mean", "std", "skewness", "kurtosis"]
 HYPOTHESIS_THRESHOLD = [0.1, 0.05, 0.001]
-
-
-def parse_results_dict(
-    complete_dict: Dict[str, Dict[str, Union[float, str]]], stats_to_keep: List[str]
-) -> Dict[str, Dict[str, float]]:
-    """Extract only required statistics from dictionary"""
-    parsed_dict = {}
-    for measure, result_dict in complete_dict.items():
-        parsed_dict[measure] = {stat: result_dict[stat] for stat in stats_to_keep}
-    return parsed_dict
+LJUNG_BOX_LAGS = [15]
 
 
 def include_statistic(
@@ -120,8 +112,10 @@ def correlation_matrix_pvalues(
 ) -> pd.DataFrame:
     """Calculate pearson correlation and p-values and add asterisks
     to relevant values in table"""
-    rho = data.corr()
-    pval = data.corr(method=lambda x, y: stats.pearsonr(x, y)[1]) - np.eye(*rho.shape)
+    rho = data.corr(numeric_only=True)
+    pval = data.corr(
+        method=lambda x, y: stats.pearsonr(x, y)[1], numeric_only=True
+    ) - np.eye(*rho.shape)
     p = pval.applymap(
         lambda x: "".join(["*" for threshold in hypothesis_threshold if x <= threshold])
     )
@@ -163,6 +157,40 @@ def create_summary_table(
 
         df.to_html(export_file)
     return df
+
+
+def generate_descriptive_statistics(
+    data: pd.DataFrame, stats_test: List[str], **kwargs
+) -> pd.DataFrame:
+    """Produce descriptive statistics test results"""
+    ## Initialize dict to store each test
+    stats_test_dict = {}
+    ## Initialize dict to store final results
+    results_dict = {measure: {} for measure in data.columns if "date" not in measure}
+    for test in stats_test:
+        if test in PANDAS_METHODS and test == "skewness":
+            if test == "skewness":
+                stats_test_dict[test] = data.skew(numeric_only=True).to_dict()
+        elif test in PANDAS_METHODS and test != "skewness":
+            stats_test_dict[test] = getattr(data, test)(numeric_only=True).to_dict()
+        elif test == "Ljung-Box":
+            stats_test_dict[test] = conduct_ljung_box(
+                data=data,
+                lags=LJUNG_BOX_LAGS,
+                date_column="date",
+                add_pvalue_stars=True,
+            )
+        else:
+            stats_test_dict[test] = test_normality(
+                normality_test=test,
+                data=data,
+                date_column="date",
+                add_pvalue_stars=True,
+            )
+    results_dict = complete_summary_results_dict(results_dict, stats_test_dict)
+    logger.debug("results_dict after summary dict %s", results_dict)
+    results_df = create_summary_table(results_dict, **kwargs)
+    return results_df
 
 
 def main() -> None:
@@ -227,29 +255,10 @@ def main() -> None:
 
     print(us_data.head())
 
-    results = us_data.describe(percentiles=[0.5]).to_dict()
-    stats_tests = {}
-    stats_tests["skewness"] = us_data.skew(numeric_only=True).to_dict()
-    stats_tests["kurtosis"] = us_data.kurtosis(numeric_only=True).to_dict()
-    stats_tests["Jarque-Bera"] = test_normality(
-        normality_test="Jarque-Bera",
-        data=us_data,
-        date_column="date",
-        add_pvalue_stars=True,
+    results = generate_descriptive_statistics(
+        us_data, DESCRIPTIVE_STATS, export_table=False
     )
-    stats_tests["Shapiro-Wilk"] = test_normality(
-        normality_test="Shapiro-Wilk",
-        data=us_data,
-        date_column="date",
-        add_pvalue_stars=True,
-    )
-    stats_tests["Ljung-Box"] = conduct_ljung_box(
-        data=us_data, lags=[15], date_column="date", add_pvalue_stars=True
-    )
-    results = complete_summary_results_dict(results, stats_tests)
-    results = parse_results_dict(results, DESCRIPTIVE_STATS)
-    results_df = create_summary_table(results, export_table=False)
-    print(results_df)
+    print(results)
 
     us_corr = correlation_matrix_pvalues(
         data=us_data,
