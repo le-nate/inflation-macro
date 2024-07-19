@@ -121,7 +121,7 @@ def catalog_camme() -> tuple[str, str, str]:
         "Authorization": f"Bearer {INSEE_AUTH}",
     }
 
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, timeout=5)
     decoded_response = response.content.decode("utf-8")
     response_json = json.loads(json.dumps(xmltodict.parse(decoded_response)))
     for i in response_json["message:StructureSpecificData"]["message:DataSet"][
