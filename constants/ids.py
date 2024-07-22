@@ -22,6 +22,7 @@ FR_GOODS_CONSUMPTION = "011794487"
 FR_DURABLES_CONSUMPTION = "011794493"
 
 # * Columns in `results.py`
+DATE = "date"
 CPI = "cpi"
 INFLATION = "inflation"
 EXPECTATIONS = "expectation"

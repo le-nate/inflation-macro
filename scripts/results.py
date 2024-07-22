@@ -97,7 +97,7 @@ us_data.dropna(inplace=True)
 logger.info(
     "Using constant dollars from %s, CPI: %s",
     CONSTANT_DOLLAR_DATE,
-    us_data[us_data["date"] == pd.Timestamp(CONSTANT_DOLLAR_DATE)][ids.CPI].iat[0],
+    us_data[us_data[ids.DATE] == pd.Timestamp(CONSTANT_DOLLAR_DATE)][ids.CPI].iat[0],
 )
 us_data = helpers.add_real_value_columns(
     data=us_data,
@@ -131,14 +131,14 @@ _, fr_exp = process_camme.preprocess(process_camme.camme_dir)
 ## Remove random lines with month as letter
 fr_exp = fr_exp[fr_exp["month"].apply(isinstance, args=(int,))]
 ## Create date column
-fr_exp["date"] = pd.to_datetime(fr_exp[["year", "month"]].assign(DAY=1))
+fr_exp[ids.DATE] = pd.to_datetime(fr_exp[["year", "month"]].assign(DAY=1))
 ## Use just quantitative expectations and date
-fr_exp = fr_exp[["date", "inf_exp_val_inc", "inf_exp_val_dec"]]
+fr_exp = fr_exp[[ids.DATE, "inf_exp_val_inc", "inf_exp_val_dec"]]
 ## Convert to negative for averaging
 fr_exp["inf_exp_val_dec"] = fr_exp["inf_exp_val_dec"] * -1
 ## Melt then pivot to get average expectation for each month
-fr_exp_melt = pd.melt(fr_exp, ["date"])
-fr_exp = pd.pivot_table(fr_exp_melt, index="date", aggfunc="mean")
+fr_exp_melt = pd.melt(fr_exp, [ids.DATE])
+fr_exp = pd.pivot_table(fr_exp_melt, index=ids.DATE, aggfunc="mean")
 fr_exp.rename(columns={"value": ids.EXPECTATIONS}, inplace=True)
 
 # * Food consumption
@@ -169,9 +169,9 @@ fr_sliced
 # %%
 # * Create measured inflation dataframe
 inf_data = pd.merge(
-    us_data[["date", ids.INFLATION, ids.EXPECTATIONS]],
-    fr_data[["date", ids.INFLATION, ids.EXPECTATIONS]],
-    on="date",
+    us_data[[ids.DATE, ids.INFLATION, ids.EXPECTATIONS]],
+    fr_data[[ids.DATE, ids.INFLATION, ids.EXPECTATIONS]],
+    on=ids.DATE,
     suffixes=("_us", "_fr"),
 )
 
@@ -210,7 +210,7 @@ plt.tight_layout()
 ## Table 1 Descriptive statistics
 
 # %%
-usa_melt = pd.melt(us_data, ["date"])
+usa_melt = pd.melt(us_data, [ids.DATE])
 usa_melt.rename(columns={"value": "Billions ($)"}, inplace=True)
 
 # %% [markdown]
@@ -219,7 +219,7 @@ usa_melt.rename(columns={"value": "Billions ($)"}, inplace=True)
 _, (bx) = plt.subplots(1, 1)
 measures_to_plot = [ids.NONDURABLES, ids.DURABLES]
 data = usa_melt[usa_melt["variable"].isin(measures_to_plot)]
-bx = sns.lineplot(data=data, x="date", y="Billions ($)", hue="variable", ax=bx)
+bx = sns.lineplot(data=data, x=ids.DATE, y="Billions ($)", hue="variable", ax=bx)
 plt.title("Real consumption levels, United States (2017 dollars)")
 
 # %% [markdown]
@@ -257,13 +257,13 @@ us_corr
 # %% [markdown]
 ##### Figure XX - Time series: Inflation Expectations, Food Consumption, Durables Consumption (France)
 # %%
-fr_melt = pd.melt(fr_data, ["date"])
+fr_melt = pd.melt(fr_data, [ids.DATE])
 fr_melt.rename(columns={"value": "Billions (€)"}, inplace=True)
 
 fig, (ax, bx) = plt.subplots(1, 2)
 measures_to_plot = ["food", "durables"]
 data = fr_melt[fr_melt["variable"].isin(measures_to_plot)]
-ax = sns.lineplot(data=data, x="date", y="Billions (€)", hue="variable", ax=ax)
+ax = sns.lineplot(data=data, x=ids.DATE, y="Billions (€)", hue="variable", ax=ax)
 plt.title("Consumption levels, France")
 
 # %% [markdown]
@@ -296,7 +296,7 @@ results_dur_dwt = dwt.smooth_signal(dur_for_dwt)
 results_save_dwt = dwt.smooth_signal(save_for_dwt)
 
 # * Numpy array for date
-t = us_data["date"].to_numpy()
+t = us_data[ids.DATE].to_numpy()
 
 # %% [markdown]
 # Figure 4 - Time scale decomposition of expectations and nondurables consumption (US)
@@ -344,6 +344,7 @@ _ = regression.plot_compare_components(
 # %% [markdown]
 ### 3.2.2) Individual time series: Continuous wavelet transforms
 # TODO CWTs for exp, nondur, dur, save
+
 
 # %% [markdown]
 ### 3.2.3) Time series co-movements: Cross wavelet transforms and phase difference
