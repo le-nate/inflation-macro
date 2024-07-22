@@ -50,37 +50,37 @@ HYPOTHESIS_THRESHOLD = [0.1, 0.05, 0.001]
 # * CPI
 raw_data = retrieve_data.get_fed_data(ids.US_CPI)
 cpi, _, _ = retrieve_data.clean_fed_data(raw_data)
-cpi.rename(columns={"value": "cpi"}, inplace=True)
+cpi.rename(columns={"value": ids.CPI}, inplace=True)
 
 # * Inflation rate
 raw_data = retrieve_data.get_fed_data(ids.US_CPI, units="pc1", freq="m")
 measured_inf, _, _ = retrieve_data.clean_fed_data(raw_data)
-measured_inf.rename(columns={"value": "inflation"}, inplace=True)
+measured_inf.rename(columns={"value": ids.INFLATION}, inplace=True)
 
 # * Inflation expectations
 raw_data = retrieve_data.get_fed_data(ids.US_INF_EXPECTATIONS)
 inf_exp, _, _ = retrieve_data.clean_fed_data(raw_data)
-inf_exp.rename(columns={"value": "expectation"}, inplace=True)
+inf_exp.rename(columns={"value": ids.EXPECTATIONS}, inplace=True)
 
 # * Non-durables consumption, monthly
 raw_data = retrieve_data.get_fed_data(ids.US_NONDURABLES_CONSUMPTION)
 nondur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
-nondur_consump.rename(columns={"value": "nondurable"}, inplace=True)
+nondur_consump.rename(columns={"value": ids.NONDURABLES}, inplace=True)
 
 # * Durables consumption, monthly
 raw_data = retrieve_data.get_fed_data(ids.US_DURABLES_CONSUMPTION)
 dur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
-dur_consump.rename(columns={"value": "durable"}, inplace=True)
+dur_consump.rename(columns={"value": ids.DURABLES}, inplace=True)
 
 # * Personal savings
 raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS)
 save, _, _ = retrieve_data.clean_fed_data(raw_data)
-save.rename(columns={"value": "savings"}, inplace=True)
+save.rename(columns={"value": ids.SAVINGS}, inplace=True)
 
 # * Personal savings rate
 raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS_RATE)
 save_rate, _, _ = retrieve_data.clean_fed_data(raw_data)
-save_rate.rename(columns={"value": "savings_rate"}, inplace=True)
+save_rate.rename(columns={"value": ids.SAVINGS_RATE}, inplace=True)
 
 # * Merge dataframes to align dates and remove extras
 us_data = cpi.merge(measured_inf, how="left")
@@ -97,16 +97,17 @@ us_data.dropna(inplace=True)
 logger.info(
     "Using constant dollars from %s, CPI: %s",
     CONSTANT_DOLLAR_DATE,
-    us_data[us_data["date"] == pd.Timestamp(CONSTANT_DOLLAR_DATE)]["cpi"].iat[0],
+    us_data[us_data["date"] == pd.Timestamp(CONSTANT_DOLLAR_DATE)][ids.CPI].iat[0],
 )
 us_data = helpers.add_real_value_columns(
     data=us_data,
-    nominal_columns=["nondurable", "durable", "savings"],
-    cpi_column="cpi",
+    nominal_columns=[ids.NONDURABLES, ids.DURABLES, ids.SAVINGS],
+    cpi_column=ids.CPI,
     constant_date=CONSTANT_DOLLAR_DATE,
 )
 us_data = helpers.calculate_diff_in_log(
-    data=us_data, columns=["cpi", "real_nondurable", "real_durable", "real_savings"]
+    data=us_data,
+    columns=[ids.CPI, ids.REAL_NONDURABLES, ids.REAL_DURABLES, ids.REAL_SAVINGS],
 )
 
 usa_sliced = pd.concat([us_data.head(), us_data.tail()])
@@ -118,12 +119,12 @@ usa_sliced
 # * CPI
 raw_data = retrieve_data.get_fed_data(ids.FR_CPI)
 fr_cpi, _, _ = retrieve_data.clean_fed_data(raw_data)
-fr_cpi.rename(columns={"value": "cpi"}, inplace=True)
+fr_cpi.rename(columns={"value": ids.CPI}, inplace=True)
 
 # * Measured inflation
 raw_data = retrieve_data.get_fed_data(ids.FR_CPI, units="pc1", freq="m")
 fr_inf, _, _ = retrieve_data.clean_fed_data(raw_data)
-fr_inf.rename(columns={"value": "inflation"}, inplace=True)
+fr_inf.rename(columns={"value": ids.INFLATION}, inplace=True)
 
 # * Inflation expectations
 _, fr_exp = process_camme.preprocess(process_camme.camme_dir)
@@ -138,7 +139,7 @@ fr_exp["inf_exp_val_dec"] = fr_exp["inf_exp_val_dec"] * -1
 ## Melt then pivot to get average expectation for each month
 fr_exp_melt = pd.melt(fr_exp, ["date"])
 fr_exp = pd.pivot_table(fr_exp_melt, index="date", aggfunc="mean")
-fr_exp.rename(columns={"value": "expectation"}, inplace=True)
+fr_exp.rename(columns={"value": ids.EXPECTATIONS}, inplace=True)
 
 # * Food consumption
 raw_data = retrieve_data.get_insee_data(ids.FR_FOOD_CONSUMPTION)
@@ -168,8 +169,8 @@ fr_sliced
 # %%
 # * Create measured inflation dataframe
 inf_data = pd.merge(
-    us_data[["date", "inflation", "expectation"]],
-    fr_data[["date", "inflation", "expectation"]],
+    us_data[["date", ids.INFLATION, ids.EXPECTATIONS]],
+    fr_data[["date", ids.INFLATION, ids.EXPECTATIONS]],
     on="date",
     suffixes=("_us", "_fr"),
 )
@@ -216,7 +217,7 @@ usa_melt.rename(columns={"value": "Billions ($)"}, inplace=True)
 ##### Figure 2 - Time series: Inflation Expectations, Nondurables Consumption, Durables Consumption, and Savings (US)
 # %%
 _, (bx) = plt.subplots(1, 1)
-measures_to_plot = ["nondurable", "durable"]
+measures_to_plot = [ids.NONDURABLES, ids.DURABLES]
 data = usa_melt[usa_melt["variable"].isin(measures_to_plot)]
 bx = sns.lineplot(data=data, x="date", y="Billions ($)", hue="variable", ax=bx)
 plt.title("Real consumption levels, United States (2017 dollars)")
@@ -225,11 +226,11 @@ plt.title("Real consumption levels, United States (2017 dollars)")
 ##### Figure 3 - Distribution of Inflation Expectations, Nondurables Consumption, Durables Consumption, and Savings (US)
 # %%
 plot_columns = [
-    "inflation",
-    "expectation",
-    "diff_log_real_nondurable",
-    "diff_log_real_durable",
-    "diff_log_real_savings",
+    ids.INFLATION,
+    ids.EXPECTATIONS,
+    ids.DIFF_LOG_REAL_NONDURABLES,
+    ids.DIFF_LOG_REAL_DURABLES,
+    ids.DIFF_LOG_REAL_SAVINGS,
 ]
 sns.pairplot(us_data[plot_columns], corner=True, kind="reg", plot_kws={"ci": None})
 
@@ -283,10 +284,10 @@ fr_data.describe()
 
 # %%
 # * Create data objects for each measure
-exp_for_dwt = dwt.DataForDWT(us_data["expectation"].to_numpy(), mother_wavelet)
-nondur_for_dwt = dwt.DataForDWT(us_data["nondurable"].to_numpy(), mother_wavelet)
-dur_for_dwt = dwt.DataForDWT(us_data["durable"].to_numpy(), mother_wavelet)
-save_for_dwt = dwt.DataForDWT(us_data["savings"].to_numpy(), mother_wavelet)
+exp_for_dwt = dwt.DataForDWT(us_data[ids.EXPECTATIONS].to_numpy(), mother_wavelet)
+nondur_for_dwt = dwt.DataForDWT(us_data[ids.NONDURABLES].to_numpy(), mother_wavelet)
+dur_for_dwt = dwt.DataForDWT(us_data[ids.DURABLES].to_numpy(), mother_wavelet)
+save_for_dwt = dwt.DataForDWT(us_data[ids.SAVINGS].to_numpy(), mother_wavelet)
 
 # * Run DWTs and extract smooth signals
 results_exp_dwt = dwt.smooth_signal(exp_for_dwt)
@@ -302,8 +303,8 @@ t = us_data["date"].to_numpy()
 # %%
 # * Plot comparison decompositions of expectations and other measure
 _ = regression.plot_compare_components(
-    a_label="expectation",
-    b_label="nondurable",
+    a_label=ids.EXPECTATIONS,
+    b_label=ids.NONDURABLES,
     smooth_a_coeffs=results_exp_dwt.coeffs,
     smooth_b_coeffs=results_nondur_dwt.coeffs,
     time=t,
@@ -316,8 +317,8 @@ _ = regression.plot_compare_components(
 # Figure 5 - Time scale decomposition of expectations and durables consumption (US)
 # %%
 _ = regression.plot_compare_components(
-    a_label="expectation",
-    b_label="durable",
+    a_label=ids.EXPECTATIONS,
+    b_label=ids.DURABLES,
     smooth_a_coeffs=results_exp_dwt.coeffs,
     smooth_b_coeffs=results_dur_dwt.coeffs,
     time=t,
@@ -330,8 +331,8 @@ _ = regression.plot_compare_components(
 # Figure XX - Time scale decomposition of expectations and savings (US)
 # %%
 _ = regression.plot_compare_components(
-    a_label="expectation",
-    b_label="savings",
+    a_label=ids.EXPECTATIONS,
+    b_label=ids.SAVINGS,
     smooth_a_coeffs=results_exp_dwt.coeffs,
     smooth_b_coeffs=results_save_dwt.coeffs,
     time=t,
@@ -354,19 +355,21 @@ _ = regression.plot_compare_components(
 ### 3.3.1) Baseline model
 # Nondurables consumption
 # %%
-results_nondur = regression.simple_regression(us_data, "expectation", "nondurable")
+results_nondur = regression.simple_regression(
+    us_data, ids.EXPECTATIONS, ids.NONDURABLES
+)
 results_nondur.summary()
 
 # %% [markdown]
 # Durables consumption
 # %%
-results_dur = regression.simple_regression(us_data, "expectation", "durable")
+results_dur = regression.simple_regression(us_data, ids.EXPECTATIONS, ids.DURABLES)
 results_dur.summary()
 
 # %% [markdown]
 # Savings
 # %%
-results_dur = regression.simple_regression(us_data, "expectation", "savings")
+results_dur = regression.simple_regression(us_data, ids.EXPECTATIONS, ids.SAVINGS)
 results_dur.summary()
 
 # %% [markdown]
