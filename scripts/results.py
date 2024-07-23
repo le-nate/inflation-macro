@@ -12,7 +12,7 @@ import pycwt as wavelet
 import seaborn as sns
 
 from constants import ids
-from src import cwt, descriptive_stats, dwt, process_camme, regression, xwt
+)
 from src.utils import helpers, wavelet_helpers
 from src.utils.logging_helpers import define_other_module_log_level
 from src import retrieve_data
@@ -472,7 +472,7 @@ plt.show()
 
 # %% [markdown]
 ### 3.2.3) Time series co-movements: Cross wavelet transforms and phase difference
-# TODO Figure 9 - Key, Phase Difference
+phase_diff_key.plot_phase_difference_key(export=False)
 # TODO XWTs for exp with nondur, dur, and save
 
 # %% [markdown]
