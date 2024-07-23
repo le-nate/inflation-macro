@@ -19,7 +19,11 @@ import pycwt as wavelet
 from constants import ids
 from src.utils.logging_helpers import define_other_module_log_level
 from src import retrieve_data
-from src.utils.wavelet_helpers import plot_cone_of_influence, plot_signficance_levels
+from src.utils.wavelet_helpers import (
+    plot_cone_of_influence,
+    plot_signficance_levels,
+    standardize_series,
+)
 
 # * Logging settings
 logger = logging.getLogger(__name__)
@@ -83,6 +87,8 @@ class ResultsFromCWT:
 def run_cwt(
     cwt_data: Type[DataForCWT],
     normalize: bool = True,
+    standardize: bool = False,
+    **kwargs
 ) -> Type[ResultsFromCWT]:
     """Conducts Continuous Wavelet Transform\n
     Returns power spectrum, period, cone of influence, and significance levels (95%)"""
@@ -92,6 +98,8 @@ def run_cwt(
 
     if normalize:
         dat_norm = cwt_data.y_values / std  #! dat_notrend / std  # Normalized dataset
+    if standardize:
+        dat_norm = standardize_series(cwt_data.y_values, **kwargs)
     else:
         dat_norm = cwt_data.y_values
 
