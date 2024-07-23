@@ -69,6 +69,7 @@ def plot_phase_difference_key(export: bool = False) -> None:
     # * Include legend
     plt.legend()
 
+    # * Export as image
     if export:
         # * Get results directory
         parent_dir = Path(__file__).parents[1]

@@ -19,6 +19,7 @@ from src import (
     dwt,
     process_camme,
     phase_diff_key,
+    phase_diff_sines,
     regression,
     xwt,
 )
@@ -748,4 +749,4 @@ time_scale_results
 # %% [markdown]
 # Figure 13 - Example, Phase differences
 # %%
-# TODO
+phase_diff_sines.plot_phase_diff(export=False)
