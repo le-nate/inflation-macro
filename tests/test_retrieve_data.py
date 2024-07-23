@@ -7,7 +7,7 @@ import sys
 import numpy as np
 import pandas as pd
 
-from src.logging_helpers import define_other_module_log_level
+from src.utils.logging_helpers import define_other_module_log_level
 from constants import ids
 from src import retrieve_data
 

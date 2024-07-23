@@ -7,8 +7,11 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 
 
-def standardize_data_for_xwt(
-    s: npt.NDArray, detrend: bool = True, standardize=True, remove_mean: bool = False
+def standardize_series(
+    series: npt.NDArray,
+    detrend: bool = True,
+    standardize: bool = True,
+    remove_mean: bool = False,
 ) -> npt.NDArray:
     """
     Helper function for pre-processing data, specifically for wavelet analysis
@@ -16,8 +19,8 @@ def standardize_data_for_xwt(
     """
 
     # Derive the variance prior to any detrending
-    std = s.std()
-    smean = s.mean()
+    std = series.std()
+    smean = series.mean()
 
     if detrend and remove_mean:
         raise ValueError(
@@ -26,11 +29,11 @@ def standardize_data_for_xwt(
 
     # Remove the trend if requested
     if detrend:
-        arbitrary_x = np.arange(0, s.size)
-        p = np.polyfit(arbitrary_x, s, 1)
-        snorm = s - np.polyval(p, arbitrary_x)
+        arbitrary_x = np.arange(0, series.size)
+        p = np.polyfit(arbitrary_x, series, 1)
+        snorm = series - np.polyval(p, arbitrary_x)
     else:
-        snorm = s
+        snorm = series
 
     if remove_mean:
         snorm = snorm - smean

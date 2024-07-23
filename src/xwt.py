@@ -15,7 +15,8 @@ from constants import ids
 from src import helpers
 from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
-from src import wavelet_helpers
+from src.utils import helpers, wavelet_helpers
+from src.utils.logging_helpers import define_other_module_log_level
 
 # * Logging settings
 logger = logging.getLogger(__name__)

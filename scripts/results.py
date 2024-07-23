@@ -11,8 +11,8 @@ import seaborn as sns
 
 from constants import ids
 from src import descriptive_stats, dwt, process_camme, regression
-from src import helpers
-from src.logging_helpers import define_other_module_log_level
+from src.utils import helpers, wavelet_helpers
+from src.utils.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 
 # * Logging settings

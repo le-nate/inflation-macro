@@ -17,9 +17,9 @@ import matplotlib.pyplot as plt
 import pycwt as wavelet
 
 from constants import ids
-from src.logging_helpers import define_other_module_log_level
+from src.utils.logging_helpers import define_other_module_log_level
 from src import retrieve_data
-from src.wavelet_helpers import plot_cone_of_influence, plot_signficance_levels
+from src.utils.wavelet_helpers import plot_cone_of_influence, plot_signficance_levels
 
 # * Logging settings
 logger = logging.getLogger(__name__)
@@ -200,7 +200,7 @@ def main() -> None:
         "coi_alpha": 0.3,
         "coi_hatch": "--",
     }
-    plot_cwt(ax, data_for_cwt, results_from_cwt, data_for_cwt, **cwt_plot_props)
+    plot_cwt(ax, data_for_cwt, results_from_cwt, **cwt_plot_props)
 
     # * Set labels/title
     ax.set_xlabel("")

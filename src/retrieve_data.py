@@ -15,8 +15,8 @@ import requests
 import xmltodict
 
 from constants import ids
-from src.helpers import convert_column_to_real_value
-from src.logging_helpers import define_other_module_log_level
+from src.utils.helpers import convert_column_to_real_value
+from src.utils.logging_helpers import define_other_module_log_level
 
 # * Logging settings
 logger = logging.getLogger(__name__)

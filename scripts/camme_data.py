@@ -9,7 +9,7 @@ import seaborn as sns
 
 from src.process_camme import preprocess
 from src.retrieve_data import get_fed_data, clean_fed_data
-from src.logging_helpers import define_other_module_log_level
+from src.utils.logging_helpers import define_other_module_log_level
 
 # * Logging settings
 logger = logging.getLogger(__name__)

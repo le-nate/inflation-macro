@@ -14,8 +14,8 @@ import statsmodels.graphics.tsaplots
 import statsmodels.stats.diagnostic
 
 from constants import ids
-from src.helpers import add_real_value_columns, calculate_diff_in_log
-from src.logging_helpers import define_other_module_log_level
+from src.utils.helpers import add_real_value_columns, calculate_diff_in_log
+from src.utils.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 
 # * Logging settings
