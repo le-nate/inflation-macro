@@ -112,8 +112,8 @@ def align_series(t_values: npt.NDArray, series_vlaues: npt.NDArray) -> npt.NDArr
 def plot_compare_components(
     a_label: str,
     b_label: str,
-    smooth_a_coeffs: npt.NDArray,
-    smooth_b_coeffs: npt.NDArray,
+    a_coeffs: npt.NDArray,
+    b_coeffs: npt.NDArray,
     time: npt.NDArray,
     levels: int,
     wavelet: str,
@@ -122,18 +122,20 @@ def plot_compare_components(
 ) -> matplotlib.figure.Figure:
     """Plot each series component separately"""
     fig, ax = plt.subplots(levels + 1, 1, **kwargs)
-    smooth_component_x = dwt.reconstruct_signal_component(smooth_a_coeffs, wavelet, 0)
-    smooth_component_y = dwt.reconstruct_signal_component(smooth_b_coeffs, wavelet, 0)
-
-    # * Align array legnths
-    smooth_component_x = align_series(time, smooth_component_x)
-    smooth_component_y = align_series(time, smooth_component_y)
+    smooth_component_x = dwt.reconstruct_signal_component(a_coeffs, wavelet, 0)
+    smooth_component_y = dwt.reconstruct_signal_component(b_coeffs, wavelet, 0)
     logger.warning(
         "lengths x: %s, y: %s, t: %s",
         len(smooth_component_x),
         len(smooth_component_y),
         len(time),
     )
+
+    # * Align array legnths
+    if len(smooth_component_x) != len(time):
+        smooth_component_x = align_series(time, smooth_component_x)
+    if len(smooth_component_y) != len(time):
+        smooth_component_y = align_series(time, smooth_component_y)
     ax[0].plot(time, smooth_component_x, label=a_label)
     ax[0].plot(time, smooth_component_y, label=b_label)
     ax[0].set_title(rf"$S_{{{levels}}}$")
@@ -141,9 +143,10 @@ def plot_compare_components(
     components = {}
     for l in range(1, levels + 1):
         components[l] = {}
-        for c, c_coeffs in zip([a_label, b_label], [smooth_a_coeffs, smooth_b_coeffs]):
+        for c, c_coeffs in zip([a_label, b_label], [a_coeffs, b_coeffs]):
             components[l][c] = dwt.reconstruct_signal_component(c_coeffs, wavelet, l)
-            components[l][c] = align_series(time, components[l][c])
+            if len(time) != len(components[l][c]):
+                components[l][c] = align_series(time, components[l][c])
             ax[l].plot(time, components[l][c], label=c)
             ax[l].set_title(rf"$D_{{{levels + 1 - l}}}$")
     plt.legend(loc="upper left")
