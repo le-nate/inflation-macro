@@ -12,8 +12,6 @@ import matplotlib.pyplot as plt
 import pycwt as wavelet
 
 from constants import ids
-from src import helpers
-from src.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 from src.utils import helpers, wavelet_helpers
 from src.utils.logging_helpers import define_other_module_log_level
@@ -283,8 +281,8 @@ def main() -> None:
     # * Pre-process data: Standardize and detrend
     y1 = dfcombo["value_1"].to_numpy()
     y2 = dfcombo["value_2"].to_numpy()
-    y1 = wavelet_helpers.standardize_data_for_xwt(y1, detrend=False, remove_mean=True)
-    y2 = wavelet_helpers.standardize_data_for_xwt(y2, detrend=True, remove_mean=False)
+    y1 = wavelet_helpers.standardize_series(y1, detrend=False, remove_mean=True)
+    y2 = wavelet_helpers.standardize_series(y2, detrend=True, remove_mean=False)
 
     mother_xwt = MOTHER_DICT[MOTHER]
 
@@ -302,7 +300,7 @@ def main() -> None:
 
     # * For diff in log
     y2_diff_log = dfcombo["diff_log_value_2"].to_numpy()
-    y2_diff_log = wavelet_helpers.standardize_data_for_xwt(
+    y2_diff_log = wavelet_helpers.standardize_series(
         y2_diff_log, detrend=True, remove_mean=False
     )
 
