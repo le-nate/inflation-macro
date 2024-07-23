@@ -3,15 +3,24 @@
 # %%
 import logging
 import sys
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Tuple, Type
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pywt
 import pycwt as wavelet
 import seaborn as sns
 
 from constants import ids
+from src import (
+    cwt,
+    descriptive_stats,
+    dwt,
+    process_camme,
+    phase_diff_key,
+    regression,
+    xwt,
 )
 from src.utils import helpers, wavelet_helpers
 from src.utils.logging_helpers import define_other_module_log_level
@@ -61,8 +70,32 @@ CWT_PLOT_PROPS = {
     "coi_hatch": "--",
 }
 
-# * Dictionary of wavelet transform classes for create_transform_dict function
-TRANSFORMS = {"dwt": dwt.DataForDWT, "cwt": cwt.DataForCWT, "xwt": xwt.DataForXWT}
+# * Define XWT configs
+XWT_DT = 1 / 12  # Delta t
+XWT_DJ = 1 / 8  # Delta j
+XWT_S0 = 2 * DT  # Initial scale
+XWT_MOTHER = "morlet"  # Morlet wavelet with :math:`\omega_0=6`.
+XWT_MOTHER_DICT = {
+    "morlet": wavelet.Morlet(6),
+    "paul": wavelet.Paul(),
+    "DOG": wavelet.DOG(),
+    "mexicanhat": wavelet.MexicanHat(),
+}
+
+XWT_PLOT_PROPS = {
+    "cmap": "jet",
+    "sig_colors": "k",
+    "sig_linewidths": 2,
+    "coi_color": "k",
+    "coi_alpha": 0.3,
+    "coi_hatch": "--",
+    "phase_diff_units": "width",
+    "phase_diff_angles": "uv",
+    "phase_diff_pivot": "mid",
+    "phase_diff_linewidth": 0.5,
+    "phase_diff_edgecolor": "k",
+    "phase_diff_alpha": 0.7,
+}
 
 
 # %%
@@ -99,12 +132,47 @@ def create_cwt_dict(
 
 
 def create_cwt_results_dict(
-    cwt_data_dic: Dict[str, Type[cwt.DataForCWT]], measures_list: List[str], **kwargs
+    cwt_data_dict: Dict[str, Type[cwt.DataForCWT]], measures_list: List[str], **kwargs
 ) -> Dict[str, Type[cwt.ResultsFromCWT]]:
-    """Create dict of cwt results instances"""
+    """Create dict of CWT results instances"""
     results_dict = {}
     for measure in measures_list:
-        results_dict[measure] = cwt.run_cwt(cwt_data_dic[measure], **kwargs)
+        results_dict[measure] = cwt.run_cwt(cwt_data_dict[measure], **kwargs)
+    return results_dict
+
+
+def create_xwt_dict(
+    data_for_xwt: pd.DataFrame, xwt_list: List[Tuple[str, str]], **kwargs
+) -> Dict[Tuple[str, str], Type[xwt.DataForXWT]]:
+    """Create dict of cross-wavelet transform objects from DataFrame"""
+    transform_dict = {}
+    for comparison in xwt_list:
+        y1 = data_for_xwt.dropna()[comparison[0]].to_numpy()
+        y2 = data_for_xwt.dropna()[comparison[1]].to_numpy()
+        y1 = wavelet_helpers.standardize_series(y1, **kwargs)
+        y2 = wavelet_helpers.standardize_series(y2, **kwargs)
+
+        transform_dict[comparison] = xwt.DataForXWT(
+            y1_values=y1,
+            y2_values=y2,
+            mother_wavelet=XWT_MOTHER_DICT[XWT_MOTHER],
+            delta_t=XWT_DT,
+            delta_j=XWT_DJ,
+            initial_scale=XWT_S0,
+            levels=LEVELS,
+        )
+    return transform_dict
+
+
+def create_xwt_results_dict(
+    xwt_data_dict: Dict[str, Type[xwt.DataForXWT]],
+    xwt_list: List[Tuple[str, str]],
+    **kwargs,
+) -> Type[xwt.ResultsFromXWT]:
+    """Create dict of XWT results instances"""
+    results_dict = {}
+    for comparison in xwt_list:
+        results_dict[comparison] = xwt.run_xwt(xwt_data_dict[comparison], **kwargs)
     return results_dict
 
 
@@ -176,6 +244,9 @@ us_data = helpers.calculate_diff_in_log(
     columns=[
         ids.CPI,
         ids.EXPECTATIONS,
+        ids.NONDURABLES,
+        ids.DURABLES,
+        ids.SAVINGS,
         ids.REAL_NONDURABLES,
         ids.REAL_DURABLES,
         ids.REAL_SAVINGS,
@@ -300,6 +371,9 @@ plt.title("Real consumption levels, United States (2017 dollars)")
 plot_columns = [
     ids.DIFF_LOG_CPI,
     ids.DIFF_LOG_EXPECTATIONS,
+    ids.DIFF_LOG_NONDURABLES,
+    ids.DIFF_LOG_DURABLES,
+    ids.DIFF_LOG_SAVINGS,
     ids.DIFF_LOG_REAL_NONDURABLES,
     ids.DIFF_LOG_REAL_DURABLES,
     ids.DIFF_LOG_REAL_SAVINGS,
@@ -473,7 +547,57 @@ plt.show()
 # %% [markdown]
 ### 3.2.3) Time series co-movements: Cross wavelet transforms and phase difference
 phase_diff_key.plot_phase_difference_key(export=False)
-# TODO XWTs for exp with nondur, dur, and save
+
+# %%
+xwt_comparisons = [
+    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_EXPECTATIONS),
+    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_NONDURABLES),
+    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_DURABLES),
+    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_SAVINGS),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_NONDURABLES),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_DURABLES),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_SAVINGS),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_NONDURABLES),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_DURABLES),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_SAVINGS),
+]
+
+# * Pre-process data: Standardize and detrend
+xwt_dict = create_xwt_dict(us_data, xwt_comparisons, detrend=False, remove_mean=True)
+
+xwt_results_dict = create_xwt_results_dict(
+    xwt_dict, xwt_comparisons, ignore_strong_trends=False
+)
+
+# * Plot XWT power spectrum
+_, axs = plt.subplots(len(xwt_comparisons), 1, figsize=(10, 8), sharex=True)
+
+for i, comp in enumerate(xwt_comparisons):
+    xwt.plot_xwt(
+        axs[i],
+        xwt_dict[comp],
+        xwt_results_dict[comp],
+        include_significance=True,
+        include_cone_of_influence=True,
+        include_phase_difference=True,
+        **XWT_PLOT_PROPS,
+    )
+
+    # * Invert y axis
+    axs[i].set_ylim(axs[i].get_ylim()[::-1])
+
+    # * Set y axis tick labels
+    y_ticks = 2 ** np.arange(
+        np.ceil(np.log2(xwt_results_dict[comp].period.min())),
+        np.ceil(np.log2(xwt_results_dict[comp].period.max())),
+    )
+    axs[i].set_yticks(np.log2(y_ticks))
+    axs[i].set_yticklabels(y_ticks)
+
+    axs[i].set_title(f"{comp[0]} X {comp[1]} (US)")
+    axs[i].set_ylabel("Period (years)")
+
+plt.show()
 
 # %% [markdown]
 ## 3.3) Regression analysis
