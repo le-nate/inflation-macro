@@ -3,14 +3,16 @@
 # %%
 import logging
 import sys
+from typing import Any, Dict, List, Type
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import pywt
+import pycwt as wavelet
 import seaborn as sns
 
 from constants import ids
-from src import descriptive_stats, dwt, process_camme, regression
+from src import cwt, descriptive_stats, dwt, process_camme, regression, xwt
 from src.utils import helpers, wavelet_helpers
 from src.utils.logging_helpers import define_other_module_log_level
 from src import retrieve_data
@@ -20,10 +22,6 @@ logger = logging.getLogger(__name__)
 define_other_module_log_level("Warning")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
-
-# ! Define mother wavelet
-MOTHER = "db4"
-mother_wavelet = pywt.Wavelet(MOTHER)
 
 # * Define constant currency years
 CONSTANT_DOLLAR_DATE = "2017-12-01"
@@ -40,6 +38,74 @@ STATISTICS_TESTS = [
     "Ljung-Box",
 ]
 HYPOTHESIS_THRESHOLD = [0.1, 0.05, 0.001]
+
+# * Define DWT configs
+DWT_MOTHER = "db4"
+dwt_mother_wavelet = pywt.Wavelet(DWT_MOTHER)
+
+# * Define CWT configs
+CWT_MOTHER = wavelet.Morlet(f0=6)
+NORMALIZE = True  # Define normalization
+DT = 1 / 12  # In years
+S0 = 2 * DT  # Starting scale
+DJ = 1 / 12  # Twelve sub-octaves per octaves
+J = 7 / DJ  # Seven powers of two with DJ sub-octaves
+LEVELS = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]  # Period scale is logarithmic
+CWT_FIG_PROPS = {"figsize": (20, 10), "dpi": 72}
+CWT_PLOT_PROPS = {
+    "cmap": "jet",
+    "sig_colors": "k",
+    "sig_linewidths": 2,
+    "coi_color": "k",
+    "coi_alpha": 0.3,
+    "coi_hatch": "--",
+}
+
+# * Dictionary of wavelet transform classes for create_transform_dict function
+TRANSFORMS = {"dwt": dwt.DataForDWT, "cwt": cwt.DataForCWT, "xwt": xwt.DataForXWT}
+
+
+# %%
+def create_dwt_dict(
+    data_for_dwt: pd.DataFrame,
+    measures_list: List[str],
+    **kwargs,
+) -> Dict[str, Type[Any]]:
+    """Create dict of discrete wavelet transform objects from DataFrame"""
+    transform_dict = {}
+    logger.debug("df shape: %s", data_for_dwt.shape)
+    for measure in measures_list:
+        transform_dict[measure] = dwt.DataForDWT(
+            y_values=data_for_dwt[measure].to_numpy(), **kwargs
+        )
+    return transform_dict
+
+
+def create_cwt_dict(
+    data_for_cwt: pd.DataFrame,
+    measures_list: List[str],
+    **kwargs,
+) -> Dict[str, Type[Any]]:
+    """Create dict of continuous wavelet transform objects from DataFrame"""
+    transform_dict = {}
+    for measure in measures_list:
+        t_values = data_for_cwt[data_for_cwt[measure].notna()][ids.DATE].to_numpy()
+        transform_dict[measure] = cwt.DataForCWT(
+            t_values=t_values,
+            y_values=data_for_cwt[data_for_cwt[measure].notna()][measure].to_numpy(),
+            **kwargs,
+        )
+    return transform_dict
+
+
+def create_cwt_results_dict(
+    cwt_data_dic: Dict[str, Type[cwt.DataForCWT]], measures_list: List[str], **kwargs
+) -> Dict[str, Type[cwt.ResultsFromCWT]]:
+    """Create dict of cwt results instances"""
+    results_dict = {}
+    for measure in measures_list:
+        results_dict[measure] = cwt.run_cwt(cwt_data_dic[measure], **kwargs)
+    return results_dict
 
 
 # %% [markdown]
@@ -90,8 +156,8 @@ us_data = us_data.merge(dur_consump, how="left")
 us_data = us_data.merge(save, how="left")
 us_data = us_data.merge(save_rate, how="left")
 
-# * Remove rows without data for all measures
-us_data.dropna(inplace=True)
+# # * Remove rows without data for all measures
+# us_data.dropna(inplace=True)
 
 # * Add real value columns
 logger.info(
@@ -107,7 +173,13 @@ us_data = helpers.add_real_value_columns(
 )
 us_data = helpers.calculate_diff_in_log(
     data=us_data,
-    columns=[ids.CPI, ids.REAL_NONDURABLES, ids.REAL_DURABLES, ids.REAL_SAVINGS],
+    columns=[
+        ids.CPI,
+        ids.EXPECTATIONS,
+        ids.REAL_NONDURABLES,
+        ids.REAL_DURABLES,
+        ids.REAL_SAVINGS,
+    ],
 )
 
 usa_sliced = pd.concat([us_data.head(), us_data.tail()])
@@ -226,8 +298,8 @@ plt.title("Real consumption levels, United States (2017 dollars)")
 ##### Figure 3 - Distribution of Inflation Expectations, Nondurables Consumption, Durables Consumption, and Savings (US)
 # %%
 plot_columns = [
-    ids.INFLATION,
-    ids.EXPECTATIONS,
+    ids.DIFF_LOG_CPI,
+    ids.DIFF_LOG_EXPECTATIONS,
     ids.DIFF_LOG_REAL_NONDURABLES,
     ids.DIFF_LOG_REAL_DURABLES,
     ids.DIFF_LOG_REAL_SAVINGS,
@@ -283,33 +355,38 @@ fr_data.describe()
 ### 3.2.1) Time scale decomposition
 
 # %%
-# * Create data objects for each measure
-exp_for_dwt = dwt.DataForDWT(us_data[ids.EXPECTATIONS].to_numpy(), mother_wavelet)
-nondur_for_dwt = dwt.DataForDWT(us_data[ids.NONDURABLES].to_numpy(), mother_wavelet)
-dur_for_dwt = dwt.DataForDWT(us_data[ids.DURABLES].to_numpy(), mother_wavelet)
-save_for_dwt = dwt.DataForDWT(us_data[ids.SAVINGS].to_numpy(), mother_wavelet)
+# * Create dwt dict
+dwt_measures = [
+    ids.DIFF_LOG_EXPECTATIONS,
+    ids.DIFF_LOG_REAL_NONDURABLES,
+    ids.DIFF_LOG_REAL_DURABLES,
+    ids.DIFF_LOG_REAL_SAVINGS,
+]
+dwt_dict = create_dwt_dict(
+    us_data.dropna(), dwt_measures, mother_wavelet=dwt_mother_wavelet
+)
 
-# * Run DWTs and extract smooth signals
-results_exp_dwt = dwt.smooth_signal(exp_for_dwt)
-results_nondur_dwt = dwt.smooth_signal(nondur_for_dwt)
-results_dur_dwt = dwt.smooth_signal(dur_for_dwt)
-results_save_dwt = dwt.smooth_signal(save_for_dwt)
+# * Run DWTs
+results_exp_dwt = dwt.run_dwt(dwt_dict[ids.DIFF_LOG_EXPECTATIONS])
+results_nondur_dwt = dwt.run_dwt(dwt_dict[ids.DIFF_LOG_REAL_NONDURABLES])
+results_dur_dwt = dwt.run_dwt(dwt_dict[ids.DIFF_LOG_REAL_DURABLES])
+results_save_dwt = dwt.run_dwt(dwt_dict[ids.DIFF_LOG_REAL_SAVINGS])
 
 # * Numpy array for date
-t = us_data[ids.DATE].to_numpy()
+t = us_data.dropna()[ids.DATE].to_numpy()
 
 # %% [markdown]
 # Figure 4 - Time scale decomposition of expectations and nondurables consumption (US)
 # %%
 # * Plot comparison decompositions of expectations and other measure
 _ = regression.plot_compare_components(
-    a_label=ids.EXPECTATIONS,
-    b_label=ids.NONDURABLES,
-    smooth_a_coeffs=results_exp_dwt.coeffs,
-    smooth_b_coeffs=results_nondur_dwt.coeffs,
+    a_label=ids.DIFF_LOG_EXPECTATIONS,
+    b_label=ids.DIFF_LOG_REAL_NONDURABLES,
+    a_coeffs=results_exp_dwt.coeffs,
+    b_coeffs=results_nondur_dwt.coeffs,
     time=t,
     levels=results_exp_dwt.levels,
-    wavelet=MOTHER,
+    wavelet=dwt_mother_wavelet,
     figsize=(15, 10),
 )
 
@@ -317,13 +394,13 @@ _ = regression.plot_compare_components(
 # Figure 5 - Time scale decomposition of expectations and durables consumption (US)
 # %%
 _ = regression.plot_compare_components(
-    a_label=ids.EXPECTATIONS,
-    b_label=ids.DURABLES,
-    smooth_a_coeffs=results_exp_dwt.coeffs,
-    smooth_b_coeffs=results_dur_dwt.coeffs,
+    a_label=ids.DIFF_LOG_EXPECTATIONS,
+    b_label=ids.DIFF_LOG_REAL_DURABLES,
+    a_coeffs=results_exp_dwt.coeffs,
+    b_coeffs=results_dur_dwt.coeffs,
     time=t,
     levels=results_exp_dwt.levels,
-    wavelet=MOTHER,
+    wavelet=dwt_mother_wavelet,
     figsize=(15, 10),
 )
 
@@ -331,19 +408,66 @@ _ = regression.plot_compare_components(
 # Figure XX - Time scale decomposition of expectations and savings (US)
 # %%
 _ = regression.plot_compare_components(
-    a_label=ids.EXPECTATIONS,
-    b_label=ids.SAVINGS,
-    smooth_a_coeffs=results_exp_dwt.coeffs,
-    smooth_b_coeffs=results_save_dwt.coeffs,
+    a_label=ids.DIFF_LOG_EXPECTATIONS,
+    b_label=ids.DIFF_LOG_REAL_SAVINGS,
+    a_coeffs=results_exp_dwt.coeffs,
+    b_coeffs=results_save_dwt.coeffs,
     time=t,
     levels=results_exp_dwt.levels,
-    wavelet=MOTHER,
+    wavelet=DWT_MOTHER,
     figsize=(15, 10),
 )
 
 # %% [markdown]
 ### 3.2.2) Individual time series: Continuous wavelet transforms
-# TODO CWTs for exp, nondur, dur, save
+# %%
+cwt_measures = [
+    # ids.INFLATION,
+    ids.EXPECTATIONS,
+    ids.SAVINGS_RATE,
+    # ids.NONDURABLES,
+    # ids.DURABLES,
+    # ids.SAVINGS,
+    # ids.REAL_NONDURABLES,
+    # ids.REAL_DURABLES,
+    # ids.REAL_SAVINGS,
+    ids.DIFF_LOG_CPI,
+    ids.DIFF_LOG_EXPECTATIONS,
+    ids.DIFF_LOG_REAL_NONDURABLES,
+    ids.DIFF_LOG_REAL_DURABLES,
+    ids.DIFF_LOG_REAL_SAVINGS,
+]
+cwt_dict = create_cwt_dict(
+    us_data.dropna(),
+    cwt_measures,
+    mother_wavelet=CWT_MOTHER,
+    delta_t=DT,
+    delta_j=DJ,
+    initial_scale=S0,
+    levels=LEVELS,
+)
+
+cwt_results_dict = create_cwt_results_dict(cwt_dict, cwt_measures, normalize=True)
+
+# %%
+# * Plot CWTs
+plt.close("all")
+_, axs = plt.subplots(len(cwt_results_dict), **CWT_FIG_PROPS)
+
+for i, m in enumerate(cwt_results_dict):
+    cwt.plot_cwt(
+        axs[i],
+        cwt_dict[m],
+        cwt_results_dict[m],
+        **CWT_PLOT_PROPS,
+    )
+
+    # * Set labels/title
+    axs[i].set_xlabel("")
+    axs[i].set_ylabel("Period (years)")
+    axs[i].set_title(m)
+
+plt.show()
 
 
 # %% [markdown]
@@ -381,7 +505,7 @@ results_dur.summary()
 fig, title = dwt.plot_smoothing(
     results_exp_dwt.smoothed_signal_dict,
     t,
-    exp_for_dwt.y_values,
+    dwt_dict[ids.EXPECTATIONS].y_values,
     figsize=(10, 10),
 )
 plt.xlabel("Year")
@@ -402,7 +526,7 @@ plt.show()
 # %%
 approximations = regression.wavelet_approximation(
     smooth_t_dict=results_exp_dwt.smoothed_signal_dict,
-    original_y=nondur_for_dwt.y_values,
+    original_y=dwt_dict[ids.NONDURABLES].y_values,
     levels=results_exp_dwt.levels,
 )
 
@@ -422,7 +546,7 @@ apprx.summary()
 # %%
 approximations = regression.wavelet_approximation(
     smooth_t_dict=results_exp_dwt.smoothed_signal_dict,
-    original_y=dur_for_dwt.y_values,
+    original_y=dwt_dict[ids.DURABLES].y_values,
     levels=results_exp_dwt.levels,
 )
 
@@ -446,7 +570,7 @@ apprx.summary()
 # %%
 approximations = regression.wavelet_approximation(
     smooth_t_dict=results_exp_dwt.smoothed_signal_dict,
-    original_y=save_for_dwt.y_values,
+    original_y=dwt_dict[ids.SAVINGS_RATE].y_values,
     levels=results_exp_dwt.levels,
 )
 
@@ -465,7 +589,7 @@ time_scale_results = regression.time_scale_regression(
     input_coeffs=results_exp_dwt.coeffs,
     output_coeffs=results_nondur_dwt.coeffs,
     levels=results_exp_dwt.levels,
-    mother_wavelet=MOTHER,
+    mother_wavelet=dwt_mother_wavelet,
 )
 time_scale_results
 
@@ -478,7 +602,7 @@ time_scale_results = regression.time_scale_regression(
     input_coeffs=results_exp_dwt.coeffs,
     output_coeffs=results_dur_dwt.coeffs,
     levels=results_exp_dwt.levels,
-    mother_wavelet=MOTHER,
+    mother_wavelet=dwt_mother_wavelet,
 )
 time_scale_results
 
@@ -492,7 +616,7 @@ time_scale_results = regression.time_scale_regression(
     input_coeffs=results_exp_dwt.coeffs,
     output_coeffs=results_save_dwt.coeffs,
     levels=results_exp_dwt.levels,
-    mother_wavelet=MOTHER,
+    mother_wavelet=dwt_mother_wavelet,
 )
 time_scale_results
 
