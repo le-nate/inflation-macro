@@ -132,16 +132,6 @@ def create_cwt_dict(
     return transform_dict
 
 
-def create_cwt_results_dict(
-    cwt_data_dict: Dict[str, Type[cwt.DataForCWT]], measures_list: List[str], **kwargs
-) -> Dict[str, Type[cwt.ResultsFromCWT]]:
-    """Create dict of CWT results instances"""
-    results_dict = {}
-    for measure in measures_list:
-        results_dict[measure] = cwt.run_cwt(cwt_data_dict[measure], **kwargs)
-    return results_dict
-
-
 def create_xwt_dict(
     data_for_xwt: pd.DataFrame, xwt_list: List[Tuple[str, str]], **kwargs
 ) -> Dict[Tuple[str, str], Type[xwt.DataForXWT]]:
@@ -163,6 +153,26 @@ def create_xwt_dict(
             levels=LEVELS,
         )
     return transform_dict
+
+
+def create_dwt_results_dict(
+    dwt_data_dict: Dict[str, Type[dwt.DataForDWT]], measures_list: List[str], **kwargs
+) -> Dict[str, Type[dwt.ResultsFromDWT]]:
+    """Create dict of DWT results instances"""
+    results_dict = {}
+    for measure in measures_list:
+        results_dict[measure] = dwt.run_dwt(dwt_data_dict[measure], **kwargs)
+    return results_dict
+
+
+def create_cwt_results_dict(
+    cwt_data_dict: Dict[str, Type[cwt.DataForCWT]], measures_list: List[str], **kwargs
+) -> Dict[str, Type[cwt.ResultsFromCWT]]:
+    """Create dict of CWT results instances"""
+    results_dict = {}
+    for measure in measures_list:
+        results_dict[measure] = cwt.run_cwt(cwt_data_dict[measure], **kwargs)
+    return results_dict
 
 
 def create_xwt_results_dict(
@@ -207,10 +217,29 @@ raw_data = retrieve_data.get_fed_data(ids.US_DURABLES_CONSUMPTION)
 dur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
 dur_consump.rename(columns={"value": ids.DURABLES}, inplace=True)
 
+# * Non-durables consumption change, monthly
+raw_data = retrieve_data.get_fed_data(
+    ids.US_NONDURABLES_CONSUMPTION, units="pc1", freq="m"
+)
+nondur_consump_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+nondur_consump_chg.rename(columns={"value": ids.NONDURABLES_CHG}, inplace=True)
+
+# * Durables consumption change, monthly
+raw_data = retrieve_data.get_fed_data(
+    ids.US_DURABLES_CONSUMPTION, units="pc1", freq="m"
+)
+dur_consump_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+dur_consump_chg.rename(columns={"value": ids.DURABLES_CHG}, inplace=True)
+
 # * Personal savings
 raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS)
 save, _, _ = retrieve_data.clean_fed_data(raw_data)
 save.rename(columns={"value": ids.SAVINGS}, inplace=True)
+
+# * Personal savings change
+raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS, units="pc1", freq="m")
+save_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+save_chg.rename(columns={"value": ids.SAVINGS_CHG}, inplace=True)
 
 # * Personal savings rate
 raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS_RATE)
@@ -442,6 +471,10 @@ fr_data.describe()
 # %%
 # * Create dwt dict
 dwt_measures = [
+    ids.EXPECTATIONS,
+    ids.NONDURABLES_CHG,
+    ids.DURABLES_CHG,
+    ids.SAVINGS_CHG,
     ids.DIFF_LOG_EXPECTATIONS,
     ids.DIFF_LOG_REAL_NONDURABLES,
     ids.DIFF_LOG_REAL_DURABLES,
@@ -452,10 +485,7 @@ dwt_dict = create_dwt_dict(
 )
 
 # * Run DWTs
-results_exp_dwt = dwt.run_dwt(dwt_dict[ids.DIFF_LOG_EXPECTATIONS])
-results_nondur_dwt = dwt.run_dwt(dwt_dict[ids.DIFF_LOG_REAL_NONDURABLES])
-results_dur_dwt = dwt.run_dwt(dwt_dict[ids.DIFF_LOG_REAL_DURABLES])
-results_save_dwt = dwt.run_dwt(dwt_dict[ids.DIFF_LOG_REAL_SAVINGS])
+dwt_results_dict = create_dwt_results_dict(dwt_dict, dwt_measures)
 
 # * Numpy array for date
 t = us_data.dropna()[ids.DATE].to_numpy()
@@ -465,12 +495,59 @@ t = us_data.dropna()[ids.DATE].to_numpy()
 # %%
 # * Plot comparison decompositions of expectations and other measure
 _ = regression.plot_compare_components(
+    a_label=ids.EXPECTATIONS,
+    b_label=ids.NONDURABLES_CHG,
+    a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+    b_coeffs=dwt_results_dict[ids.NONDURABLES_CHG].coeffs,
+    time=t,
+    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
+    wavelet=dwt_mother_wavelet,
+    figsize=(15, 10),
+)
+# %%
+# * Plot comparison decompositions of expectations and other measure
+_ = regression.plot_compare_components(
+    a_label=ids.EXPECTATIONS,
+    b_label=ids.DURABLES_CHG,
+    a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+    b_coeffs=dwt_results_dict[ids.DURABLES_CHG].coeffs,
+    time=t,
+    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
+    wavelet=dwt_mother_wavelet,
+    figsize=(15, 10),
+)
+# %%
+# * Plot comparison decompositions of expectations and other measure
+_ = regression.plot_compare_components(
+    a_label=ids.EXPECTATIONS,
+    b_label=ids.SAVINGS_CHG,
+    a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+    b_coeffs=dwt_results_dict[ids.SAVINGS_CHG].coeffs,
+    time=t,
+    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
+    wavelet=dwt_mother_wavelet,
+    figsize=(15, 10),
+)
+# %%
+# * Plot comparison decompositions of expectations and other measure
+_ = regression.plot_compare_components(
+    a_label=ids.EXPECTATIONS,
+    b_label=ids.DIFF_LOG_REAL_NONDURABLES,
+    a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+    b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_NONDURABLES].coeffs,
+    time=t,
+    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
+    wavelet=dwt_mother_wavelet,
+    figsize=(15, 10),
+)
+# %%
+_ = regression.plot_compare_components(
     a_label=ids.DIFF_LOG_EXPECTATIONS,
     b_label=ids.DIFF_LOG_REAL_NONDURABLES,
-    a_coeffs=results_exp_dwt.coeffs,
-    b_coeffs=results_nondur_dwt.coeffs,
+    a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
+    b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_NONDURABLES].coeffs,
     time=t,
-    levels=results_exp_dwt.levels,
+    levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
     wavelet=dwt_mother_wavelet,
     figsize=(15, 10),
 )
@@ -481,10 +558,10 @@ _ = regression.plot_compare_components(
 _ = regression.plot_compare_components(
     a_label=ids.DIFF_LOG_EXPECTATIONS,
     b_label=ids.DIFF_LOG_REAL_DURABLES,
-    a_coeffs=results_exp_dwt.coeffs,
-    b_coeffs=results_dur_dwt.coeffs,
+    a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
+    b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_DURABLES].coeffs,
     time=t,
-    levels=results_exp_dwt.levels,
+    levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
     wavelet=dwt_mother_wavelet,
     figsize=(15, 10),
 )
@@ -495,10 +572,10 @@ _ = regression.plot_compare_components(
 _ = regression.plot_compare_components(
     a_label=ids.DIFF_LOG_EXPECTATIONS,
     b_label=ids.DIFF_LOG_REAL_SAVINGS,
-    a_coeffs=results_exp_dwt.coeffs,
-    b_coeffs=results_save_dwt.coeffs,
+    a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
+    b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_SAVINGS].coeffs,
     time=t,
-    levels=results_exp_dwt.levels,
+    levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
     wavelet=DWT_MOTHER,
     figsize=(15, 10),
 )
@@ -512,6 +589,9 @@ cwt_measures = [
     ids.SAVINGS_RATE,
     # ids.NONDURABLES,
     # ids.DURABLES,
+    ids.NONDURABLES_CHG,
+    ids.DURABLES_CHG,
+    ids.SAVINGS_CHG,
     # ids.SAVINGS,
     # ids.REAL_NONDURABLES,
     # ids.REAL_DURABLES,
@@ -561,6 +641,9 @@ phase_diff_key.plot_phase_difference_key(export=False)
 
 # %%
 xwt_comparisons = [
+    (ids.EXPECTATIONS, ids.NONDURABLES_CHG),
+    (ids.EXPECTATIONS, ids.DURABLES_CHG),
+    (ids.EXPECTATIONS, ids.SAVINGS_CHG),
     (ids.DIFF_LOG_CPI, ids.DIFF_LOG_EXPECTATIONS),
     (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_NONDURABLES),
     (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_DURABLES),
@@ -616,20 +699,24 @@ plt.show()
 # Nondurables consumption
 # %%
 results_nondur = regression.simple_regression(
-    us_data, ids.EXPECTATIONS, ids.NONDURABLES
+    us_data.dropna(), ids.EXPECTATIONS, ids.NONDURABLES_CHG
 )
 results_nondur.summary()
 
 # %% [markdown]
 # Durables consumption
 # %%
-results_dur = regression.simple_regression(us_data, ids.EXPECTATIONS, ids.DURABLES)
+results_dur = regression.simple_regression(
+    us_data.dropna(), ids.EXPECTATIONS, ids.DURABLES_CHG
+)
 results_dur.summary()
 
 # %% [markdown]
 # Savings
 # %%
-results_dur = regression.simple_regression(us_data, ids.EXPECTATIONS, ids.SAVINGS)
+results_dur = regression.simple_regression(
+    us_data.dropna(), ids.EXPECTATIONS, ids.SAVINGS_CHG
+)
 results_dur.summary()
 
 # %% [markdown]
@@ -638,7 +725,7 @@ results_dur.summary()
 
 # %%
 fig, title = dwt.plot_smoothing(
-    results_exp_dwt.smoothed_signal_dict,
+    dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
     t,
     dwt_dict[ids.EXPECTATIONS].y_values,
     figsize=(10, 10),
@@ -660,9 +747,9 @@ plt.show()
 
 # %%
 approximations = regression.wavelet_approximation(
-    smooth_t_dict=results_exp_dwt.smoothed_signal_dict,
-    original_y=dwt_dict[ids.NONDURABLES].y_values,
-    levels=results_exp_dwt.levels,
+    smooth_t_dict=dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
+    original_y=dwt_dict[ids.NONDURABLES_CHG].y_values,
+    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
 )
 
 # * Remove D_1 and D_2
@@ -680,9 +767,9 @@ apprx.summary()
 
 # %%
 approximations = regression.wavelet_approximation(
-    smooth_t_dict=results_exp_dwt.smoothed_signal_dict,
-    original_y=dwt_dict[ids.DURABLES].y_values,
-    levels=results_exp_dwt.levels,
+    smooth_t_dict=dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
+    original_y=dwt_dict[ids.DURABLES_CHG].y_values,
+    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
 )
 
 # * Remove D_1 and D_2
@@ -704,9 +791,9 @@ apprx.summary()
 
 # %%
 approximations = regression.wavelet_approximation(
-    smooth_t_dict=results_exp_dwt.smoothed_signal_dict,
-    original_y=dwt_dict[ids.SAVINGS_RATE].y_values,
-    levels=results_exp_dwt.levels,
+    smooth_t_dict=dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
+    original_y=dwt_dict[ids.SAVINGS_CHG].y_values,
+    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
 )
 
 # * Remove D_1 and D_2
@@ -721,9 +808,9 @@ apprx.summary()
 
 # %%
 time_scale_results = regression.time_scale_regression(
-    input_coeffs=results_exp_dwt.coeffs,
-    output_coeffs=results_nondur_dwt.coeffs,
-    levels=results_exp_dwt.levels,
+    input_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+    output_coeffs=dwt_results_dict[ids.NONDURABLES_CHG].coeffs,
+    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
     mother_wavelet=dwt_mother_wavelet,
 )
 time_scale_results
@@ -734,9 +821,9 @@ time_scale_results
 
 # %%
 time_scale_results = regression.time_scale_regression(
-    input_coeffs=results_exp_dwt.coeffs,
-    output_coeffs=results_dur_dwt.coeffs,
-    levels=results_exp_dwt.levels,
+    input_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+    output_coeffs=dwt_results_dict[ids.DURABLES_CHG].coeffs,
+    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
     mother_wavelet=dwt_mother_wavelet,
 )
 time_scale_results
@@ -748,9 +835,9 @@ time_scale_results
 
 # %%
 time_scale_results = regression.time_scale_regression(
-    input_coeffs=results_exp_dwt.coeffs,
-    output_coeffs=results_save_dwt.coeffs,
-    levels=results_exp_dwt.levels,
+    input_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+    output_coeffs=dwt_results_dict[ids.SAVINGS_CHG].coeffs,
+    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
     mother_wavelet=dwt_mother_wavelet,
 )
 time_scale_results
