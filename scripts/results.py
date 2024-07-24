@@ -218,12 +218,25 @@ save_rate, _, _ = retrieve_data.clean_fed_data(raw_data)
 save_rate.rename(columns={"value": ids.SAVINGS_RATE}, inplace=True)
 
 # * Merge dataframes to align dates and remove extras
-us_data = cpi.merge(measured_inf, how="left")
-us_data = us_data.merge(inf_exp, how="left")
-us_data = us_data.merge(nondur_consump, how="left")
-us_data = us_data.merge(dur_consump, how="left")
-us_data = us_data.merge(save, how="left")
-us_data = us_data.merge(save_rate, how="left")
+dataframes = [
+    cpi,
+    measured_inf,
+    inf_exp,
+    nondur_consump,
+    nondur_consump_chg,
+    dur_consump,
+    dur_consump_chg,
+    save,
+    save_chg,
+    save_rate,
+]
+us_data = helpers.combine_series(dataframes, on=[ids.DATE], how="left")
+# us_data = cpi.merge(measured_inf, how="left")
+# us_data = us_data.merge(inf_exp, how="left")
+# us_data = us_data.merge(nondur_consump, how="left")
+# us_data = us_data.merge(dur_consump, how="left")
+# us_data = us_data.merge(save, how="left")
+# us_data = us_data.merge(save_rate, how="left")
 
 # # * Remove rows without data for all measures
 # us_data.dropna(inplace=True)
@@ -301,11 +314,8 @@ fr_dur_cons, _, _ = retrieve_data.clean_insee_data(raw_data)
 fr_dur_cons.rename(columns={"value": "durables"}, inplace=True)
 
 # %%
-fr_data = fr_cpi.merge(fr_inf, how="left")
-fr_data = fr_data.merge(fr_exp.reset_index(), how="left")
-fr_data = fr_data.merge(fr_food_cons, how="left")
-fr_data = fr_data.merge(fr_goods_cons, how="left")
-fr_data = fr_data.merge(fr_dur_cons, how="left")
+dataframes = [fr_cpi, fr_inf, fr_exp, fr_food_cons, fr_goods_cons, fr_dur_cons]
+fr_data = helpers.combine_series(dataframes, on=[ids.DATE], how="left")
 
 fr_sliced = pd.concat([fr_data.head(), fr_data.tail()])
 fr_sliced
