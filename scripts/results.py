@@ -724,6 +724,9 @@ results_dur.summary()
 # Figure 12 - Wavelet Smoothing of Inflation Expectations (US)
 
 # %%
+dwt_results_dict[ids.EXPECTATIONS].smooth_signal(
+    dwt_dict[ids.EXPECTATIONS].y_values, dwt_dict[ids.EXPECTATIONS].mother_wavelet
+)
 fig, title = dwt.plot_smoothing(
     dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
     t,

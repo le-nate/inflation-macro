@@ -48,6 +48,29 @@ class ResultsFromDWT:
         default_factory=dict
     )
 
+    def smooth_signal(
+        self, y_values: npt.NDArray, mother_wavelet: Type
+    ) -> Dict[int, Dict[str, npt.NDArray]]:
+        """Generate smoothed signals based off wavelet coefficients for each pre-defined level"""
+        ## Initialize dict for reconstructed signals
+        signals_dict = {}
+
+        ## Loop through levels and remove detail level component(s)
+        # ! Note: signal_dict[l] provides the signal with levels <= l removed
+        logger.debug(self.levels)
+        for l in range(self.levels, 0, -1):
+            print(f"s_{l} stored with key {l}")
+            smooth_coeffs = self.coeffs.copy()
+            signals_dict[l] = {}
+            ## Set remaining detail coefficients to zero
+            for coeff in range(1, l + 1):
+                smooth_coeffs[-1 * coeff] = np.zeros_like(smooth_coeffs[-1 * coeff])
+            signals_dict[l]["coeffs"] = smooth_coeffs
+            # Reconstruct the signal using only the approximation coefficients
+            reconst = pywt.waverec(smooth_coeffs, mother_wavelet)
+            signals_dict[l]["signal"] = trim_signal(y_values, reconst)
+        self.smoothed_signal_dict = signals_dict
+
 
 def trim_signal(
     original_signal: npt.NDArray, reconstructed: npt.NDArray
@@ -81,33 +104,6 @@ def run_dwt(dwt_data: Type[DataForDWT]) -> Type[ResultsFromDWT]:
         dwt_data.y_values, dwt_data.mother_wavelet, level=dwt_data.levels
     )
     return ResultsFromDWT(dwt_coeffs, dwt_levels)
-
-
-def smooth_signal(
-    dwt_data: Type[DataForDWT],
-) -> Type[ResultsFromDWT]:
-    """Generate smoothed signals based off wavelet coefficients for each pre-defined level"""
-    ## Initialize dict for reconstructed signals
-    signals_dict = {}
-
-    dwt_results = run_dwt(dwt_data)
-
-    ## Loop through levels and remove detail level component(s)
-    # ! Note: signal_dict[l] provides the signal with levels <= l removed
-    logger.debug(dwt_results.levels)
-    for l in range(dwt_results.levels, 0, -1):
-        print(f"s_{l} stored with key {l}")
-        smooth_coeffs = dwt_results.coeffs.copy()
-        signals_dict[l] = {}
-        ## Set remaining detail coefficients to zero
-        for coeff in range(1, l + 1):
-            smooth_coeffs[-1 * coeff] = np.zeros_like(smooth_coeffs[-1 * coeff])
-        signals_dict[l]["coeffs"] = smooth_coeffs
-        # Reconstruct the signal using only the approximation coefficients
-        reconst = pywt.waverec(smooth_coeffs, dwt_data.mother_wavelet)
-        signals_dict[l]["signal"] = trim_signal(dwt_data.y_values, reconst)
-    dwt_results.smoothed_signal_dict = signals_dict
-    return dwt_results
 
 
 def reconstruct_signal_component(
@@ -167,7 +163,10 @@ def main() -> None:
     data_for_dwt = DataForDWT(y, MOTHER)
 
     # * Apply DWT and smooth signal
-    results_from_dwt = smooth_signal(data_for_dwt)
+    results_from_dwt = run_dwt(data_for_dwt)
+    results_from_dwt.smooth_signal(
+        y_values=data_for_dwt.y_values, mother_wavelet=data_for_dwt.mother_wavelet
+    )
 
     fig, fig_title = plot_smoothing(
         results_from_dwt.smoothed_signal_dict, t, y, figsize=(10, 10)
