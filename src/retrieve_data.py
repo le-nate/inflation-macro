@@ -24,11 +24,12 @@ define_other_module_log_level("info")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
-## Retrieve API credentials
+# * Retrieve API credentials
 load_dotenv()
 BDF_KEY = os.getenv("BDF_KEY")
 FED_KEY = os.getenv("FED_KEY")
 INSEE_AUTH = os.getenv("INSEE_AUTH")
+TIMEOUT = 5
 
 # * Define constant currency years
 CONSTANT_DOLLAR_DATE = "2017-12-01"
@@ -78,7 +79,7 @@ def get_fed_data(series: str, no_headers: bool = True, **kwargs) -> str:
     ## Make request
     try:
         print(f"Requesting {series}")
-        r = requests.get(final_url, timeout=5)
+        r = requests.get(final_url, timeout=TIMEOUT)
         r.raise_for_status()  # Raise an exception for 4XX and 5XX HTTP status codes
         resource = r.json()["observations"] if no_headers is True else r.json()
         print(f"Retrieved {series}")
@@ -121,7 +122,7 @@ def catalog_camme() -> tuple[str, str, str]:
         "Authorization": f"Bearer {INSEE_AUTH}",
     }
 
-    response = requests.get(url, headers=headers, timeout=5)
+    response = requests.get(url, headers=headers, timeout=TIMEOUT)
     decoded_response = response.content.decode("utf-8")
     response_json = json.loads(json.dumps(xmltodict.parse(decoded_response)))
     for i in response_json["message:StructureSpecificData"]["message:DataSet"][
@@ -153,7 +154,7 @@ def get_insee_data(series_id: str) -> list:
         "Accept": "application/json",
         "Authorization": f"Bearer {INSEE_AUTH}",
     }
-    response = requests.get(url, headers=headers, timeout=10)
+    response = requests.get(url, headers=headers, timeout=TIMEOUT)
     decoded_response = response.content.decode("utf-8")
     response_json = json.loads(json.dumps(xmltodict.parse(decoded_response)))
     series_title = response_json["message:StructureSpecificData"]["message:DataSet"][
@@ -215,7 +216,7 @@ def get_bdf_data(series_key: str, dataset: str = "ICP", **kwargs) -> str:
     final_url = f"{base_url}{'/'.join([f'{v}' for k, v in params.items()])}?client_id={BDF_KEY}&format={req_format}"
 
     print(f"Requesting {series_key}")
-    r = requests.get(final_url, headers=headers, timeout=5)
+    r = requests.get(final_url, headers=headers, timeout=TIMEOUT)
     print(r)
     response = r.json()
     response = response["seriesObs"][0]["ObservationsSerie"]["observations"]
@@ -269,7 +270,7 @@ def get_world_bank_data(series_id: str, country: str) -> str:
     United States: 'US'
     """
     base_url = f"https://api.worldbank.org/v2/indicator/{series_id}?locations={country}?format=json"
-    response = requests.get(base_url, timeout=5)
+    response = requests.get(base_url, timeout=TIMEOUT)
     print(response)
     return response.json()
 
