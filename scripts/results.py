@@ -98,6 +98,23 @@ XWT_PLOT_PROPS = {
     "phase_diff_alpha": 0.7,
 }
 
+SERIES_COMPARISONS = [
+    (ids.DIFF_LOG_CPI, ids.EXPECTATIONS),
+    (ids.EXPECTATIONS, ids.NONDURABLES_CHG),
+    (ids.EXPECTATIONS, ids.DURABLES_CHG),
+    (ids.EXPECTATIONS, ids.SAVINGS_CHG),
+    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_EXPECTATIONS),
+    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_NONDURABLES),
+    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_DURABLES),
+    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_SAVINGS),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_NONDURABLES),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_DURABLES),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_SAVINGS),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_NONDURABLES),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_DURABLES),
+    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_SAVINGS),
+]
+
 
 # %%
 def create_dwt_dict(
@@ -488,91 +505,102 @@ t = us_data.dropna()[ids.DATE].to_numpy()
 # Figure 4 - Time scale decomposition of expectations and nondurables consumption (US)
 # %%
 # * Plot comparison decompositions of expectations and other measure
-_ = regression.plot_compare_components(
-    a_label=ids.EXPECTATIONS,
-    b_label=ids.NONDURABLES_CHG,
-    a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-    b_coeffs=dwt_results_dict[ids.NONDURABLES_CHG].coeffs,
-    time=t,
-    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-    wavelet=dwt_mother_wavelet,
-    figsize=(15, 10),
-)
-# %%
-# * Plot comparison decompositions of expectations and other measure
-_ = regression.plot_compare_components(
-    a_label=ids.EXPECTATIONS,
-    b_label=ids.DURABLES_CHG,
-    a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-    b_coeffs=dwt_results_dict[ids.DURABLES_CHG].coeffs,
-    time=t,
-    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-    wavelet=dwt_mother_wavelet,
-    figsize=(15, 10),
-)
-# %%
-# * Plot comparison decompositions of expectations and other measure
-_ = regression.plot_compare_components(
-    a_label=ids.EXPECTATIONS,
-    b_label=ids.SAVINGS_CHG,
-    a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-    b_coeffs=dwt_results_dict[ids.SAVINGS_CHG].coeffs,
-    time=t,
-    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-    wavelet=dwt_mother_wavelet,
-    figsize=(15, 10),
-)
-# %%
-# * Plot comparison decompositions of expectations and other measure
-_ = regression.plot_compare_components(
-    a_label=ids.EXPECTATIONS,
-    b_label=ids.DIFF_LOG_REAL_NONDURABLES,
-    a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-    b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_NONDURABLES].coeffs,
-    time=t,
-    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-    wavelet=dwt_mother_wavelet,
-    figsize=(15, 10),
-)
-# %%
-_ = regression.plot_compare_components(
-    a_label=ids.DIFF_LOG_EXPECTATIONS,
-    b_label=ids.DIFF_LOG_REAL_NONDURABLES,
-    a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
-    b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_NONDURABLES].coeffs,
-    time=t,
-    levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
-    wavelet=dwt_mother_wavelet,
-    figsize=(15, 10),
-)
+# dwt_comparisons = [
+#     (ids.EXPECTATIONS, ids.NONDURABLES_CHG),
+#     (ids.EXPECTATIONS, ids.DURABLES_CHG),
+#     (ids.EXPECTATIONS, ids.SAVINGS_CHG),
+#     (ids.EXPECTATIONS, ids.DIFF_LOG_REAL_NONDURABLES),
+#     (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_NONDURABLES),
+#     (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_DURABLES),
+#     (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_SAVINGS),
+# ]
 
-# %% [markdown]
-# Figure 5 - Time scale decomposition of expectations and durables consumption (US)
-# %%
-_ = regression.plot_compare_components(
-    a_label=ids.DIFF_LOG_EXPECTATIONS,
-    b_label=ids.DIFF_LOG_REAL_DURABLES,
-    a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
-    b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_DURABLES].coeffs,
-    time=t,
-    levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
-    wavelet=dwt_mother_wavelet,
-    figsize=(15, 10),
-)
+for comp in SERIES_COMPARISONS:
+    _ = regression.plot_compare_components(
+        a_label=comp[0],
+        b_label=comp[1],
+        a_coeffs=dwt_results_dict[comp[0]].coeffs,
+        b_coeffs=dwt_results_dict[comp[1]].coeffs,
+        time=t,
+        levels=dwt_results_dict[comp[0]].levels,
+        wavelet=dwt_mother_wavelet,
+        figsize=(15, 10),
+    )
+# # %%
+# # * Plot comparison decompositions of expectations and other measure
+# _ = regression.plot_compare_components(
+#     a_label=ids.EXPECTATIONS,
+#     b_label=ids.DURABLES_CHG,
+#     a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+#     b_coeffs=dwt_results_dict[ids.DURABLES_CHG].coeffs,
+#     time=t,
+#     levels=dwt_results_dict[ids.EXPECTATIONS].levels,
+#     wavelet=dwt_mother_wavelet,
+#     figsize=(15, 10),
+# )
+# # %%
+# # * Plot comparison decompositions of expectations and other measure
+# _ = regression.plot_compare_components(
+#     a_label=ids.EXPECTATIONS,
+#     b_label=ids.SAVINGS_CHG,
+#     a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+#     b_coeffs=dwt_results_dict[ids.SAVINGS_CHG].coeffs,
+#     time=t,
+#     levels=dwt_results_dict[ids.EXPECTATIONS].levels,
+#     wavelet=dwt_mother_wavelet,
+#     figsize=(15, 10),
+# )
+# # %%
+# # * Plot comparison decompositions of expectations and other measure
+# _ = regression.plot_compare_components(
+#     a_label=ids.EXPECTATIONS,
+#     b_label=ids.DIFF_LOG_REAL_NONDURABLES,
+#     a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+#     b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_NONDURABLES].coeffs,
+#     time=t,
+#     levels=dwt_results_dict[ids.EXPECTATIONS].levels,
+#     wavelet=dwt_mother_wavelet,
+#     figsize=(15, 10),
+# )
+# # %%
+# _ = regression.plot_compare_components(
+#     a_label=ids.DIFF_LOG_EXPECTATIONS,
+#     b_label=ids.DIFF_LOG_REAL_NONDURABLES,
+#     a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
+#     b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_NONDURABLES].coeffs,
+#     time=t,
+#     levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
+#     wavelet=dwt_mother_wavelet,
+#     figsize=(15, 10),
+# )
 
-# %% [markdown]
-# Figure XX - Time scale decomposition of expectations and savings (US)
-# %%
-_ = regression.plot_compare_components(
-    a_label=ids.DIFF_LOG_EXPECTATIONS,
-    b_label=ids.DIFF_LOG_REAL_SAVINGS,
-    a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
-    b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_SAVINGS].coeffs,
-    time=t,
-    levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
-    wavelet=DWT_MOTHER,
-    figsize=(15, 10),
-)
+# # %% [markdown]
+# # Figure 5 - Time scale decomposition of expectations and durables consumption (US)
+# # %%
+# _ = regression.plot_compare_components(
+#     a_label=ids.DIFF_LOG_EXPECTATIONS,
+#     b_label=ids.DIFF_LOG_REAL_DURABLES,
+#     a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
+#     b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_DURABLES].coeffs,
+#     time=t,
+#     levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
+#     wavelet=dwt_mother_wavelet,
+#     figsize=(15, 10),
+# )
+
+# # %% [markdown]
+# # Figure XX - Time scale decomposition of expectations and savings (US)
+# # %%
+# _ = regression.plot_compare_components(
+#     a_label=ids.DIFF_LOG_EXPECTATIONS,
+#     b_label=ids.DIFF_LOG_REAL_SAVINGS,
+#     a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
+#     b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_SAVINGS].coeffs,
+#     time=t,
+#     levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
+#     wavelet=DWT_MOTHER,
+#     figsize=(15, 10),
+# )
 
 # %% [markdown]
 ### 3.2.2) Individual time series: Continuous wavelet transforms
@@ -634,27 +662,11 @@ plt.show()
 phase_diff_key.plot_phase_difference_key(export=False)
 
 # %%
-xwt_comparisons = [
-    (ids.EXPECTATIONS, ids.NONDURABLES_CHG),
-    (ids.EXPECTATIONS, ids.DURABLES_CHG),
-    (ids.EXPECTATIONS, ids.SAVINGS_CHG),
-    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_EXPECTATIONS),
-    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_NONDURABLES),
-    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_DURABLES),
-    (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_SAVINGS),
-    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_NONDURABLES),
-    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_DURABLES),
-    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_SAVINGS),
-    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_NONDURABLES),
-    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_DURABLES),
-    (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_SAVINGS),
-]
-
 # * Pre-process data: Standardize and detrend
-xwt_dict = create_xwt_dict(us_data, xwt_comparisons, detrend=False, remove_mean=True)
+xwt_dict = create_xwt_dict(us_data, SERIES_COMPARISONS, detrend=False, remove_mean=True)
 
 xwt_results_dict = create_xwt_results_dict(
-    xwt_dict, xwt_comparisons, ignore_strong_trends=False
+    xwt_dict, SERIES_COMPARISONS, ignore_strong_trends=False
 )
 
 # * Plot XWT power spectrum
@@ -804,40 +816,42 @@ apprx.summary()
 # on Inflation Expectations (US)
 
 # %%
-time_scale_results = regression.time_scale_regression(
-    input_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-    output_coeffs=dwt_results_dict[ids.NONDURABLES_CHG].coeffs,
-    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-    mother_wavelet=dwt_mother_wavelet,
-)
-time_scale_results
+for comp in SERIES_COMPARISONS:
+    time_scale_results = regression.time_scale_regression(
+        input_coeffs=dwt_results_dict[comp[0]].coeffs,
+        output_coeffs=dwt_results_dict[comp[1]].coeffs,
+        levels=dwt_results_dict[comp[0]].levels,
+        mother_wavelet=dwt_mother_wavelet,
+    )
+    print(f"\nRegressing {comp[1]} on {comp[0]}")
+    print(time_scale_results.as_text())
 
-# %% [markdown]
-# Table 8 - Time Scale Decomposition: OLS Regression of Durables Consumption on
-# Inflation Expectations (US)
+# # %% [markdown]
+# # Table 8 - Time Scale Decomposition: OLS Regression of Durables Consumption on
+# # Inflation Expectations (US)
 
-# %%
-time_scale_results = regression.time_scale_regression(
-    input_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-    output_coeffs=dwt_results_dict[ids.DURABLES_CHG].coeffs,
-    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-    mother_wavelet=dwt_mother_wavelet,
-)
-time_scale_results
+# # %%
+# time_scale_results = regression.time_scale_regression(
+#     input_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+#     output_coeffs=dwt_results_dict[ids.DURABLES_CHG].coeffs,
+#     levels=dwt_results_dict[ids.EXPECTATIONS].levels,
+#     mother_wavelet=dwt_mother_wavelet,
+# )
+# time_scale_results
 
 
-# %% [markdown]
-# Table XX - Time Scale Decomposition: OLS Regression of Savings on
-# Inflation Expectations (US)
+# # %% [markdown]
+# # Table XX - Time Scale Decomposition: OLS Regression of Savings on
+# # Inflation Expectations (US)
 
-# %%
-time_scale_results = regression.time_scale_regression(
-    input_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-    output_coeffs=dwt_results_dict[ids.SAVINGS_CHG].coeffs,
-    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-    mother_wavelet=dwt_mother_wavelet,
-)
-time_scale_results
+# # %%
+# time_scale_results = regression.time_scale_regression(
+#     input_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+#     output_coeffs=dwt_results_dict[ids.SAVINGS_CHG].coeffs,
+#     levels=dwt_results_dict[ids.EXPECTATIONS].levels,
+#     mother_wavelet=dwt_mother_wavelet,
+# )
+# print(time_scale_results.as_text())
 
 
 # %% [markdown]
