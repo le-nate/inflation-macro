@@ -8,16 +8,13 @@ from typing import Any, Dict, List, Tuple, Type
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pywt
-import pycwt as wavelet
 import seaborn as sns
 
-from constants import ids
+from constants import ids, results_configs
 from src import (
     cwt,
     descriptive_stats,
     dwt,
-    process_camme,
     phase_diff_key,
     phase_diff_sines,
     regression,
@@ -32,71 +29,6 @@ logger = logging.getLogger(__name__)
 define_other_module_log_level("Error")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
-
-# * Define constant currency years
-CONSTANT_DOLLAR_DATE = "2017-12-01"
-
-# * Define statistical tests to run on data
-STATISTICS_TESTS = [
-    "count",
-    "mean",
-    "std",
-    "skewness",
-    "kurtosis",
-    "Jarque-Bera",
-    "Shapiro-Wilk",
-    "Ljung-Box",
-]
-HYPOTHESIS_THRESHOLD = [0.1, 0.05, 0.001]
-
-# * Define DWT configs
-DWT_MOTHER = "db4"
-dwt_mother_wavelet = pywt.Wavelet(DWT_MOTHER)
-
-# * Define CWT configs
-CWT_MOTHER = wavelet.Morlet(f0=6)
-NORMALIZE = True  # Define normalization
-DT = 1 / 12  # In years
-S0 = 2 * DT  # Starting scale
-DJ = 1 / 12  # Twelve sub-octaves per octaves
-J = 7 / DJ  # Seven powers of two with DJ sub-octaves
-LEVELS = [0.0625, 0.125, 0.25, 0.5, 1, 2, 4, 8, 16]  # Period scale is logarithmic
-CWT_FIG_PROPS = {"figsize": (20, 10), "dpi": 72}
-CWT_PLOT_PROPS = {
-    "cmap": "jet",
-    "sig_colors": "k",
-    "sig_linewidths": 2,
-    "coi_color": "k",
-    "coi_alpha": 0.3,
-    "coi_hatch": "--",
-}
-
-# * Define XWT configs
-XWT_DT = 1 / 12  # Delta t
-XWT_DJ = 1 / 8  # Delta j
-XWT_S0 = 2 * DT  # Initial scale
-XWT_MOTHER = "morlet"  # Morlet wavelet with :math:`\omega_0=6`.
-XWT_MOTHER_DICT = {
-    "morlet": wavelet.Morlet(6),
-    "paul": wavelet.Paul(),
-    "DOG": wavelet.DOG(),
-    "mexicanhat": wavelet.MexicanHat(),
-}
-
-XWT_PLOT_PROPS = {
-    "cmap": "jet",
-    "sig_colors": "k",
-    "sig_linewidths": 2,
-    "coi_color": "k",
-    "coi_alpha": 0.3,
-    "coi_hatch": "--",
-    "phase_diff_units": "width",
-    "phase_diff_angles": "uv",
-    "phase_diff_pivot": "mid",
-    "phase_diff_linewidth": 0.5,
-    "phase_diff_edgecolor": "k",
-    "phase_diff_alpha": 0.7,
-}
 
 SERIES_COMPARISONS = [
     (ids.DIFF_LOG_CPI, ids.EXPECTATIONS),
@@ -163,11 +95,11 @@ def create_xwt_dict(
         transform_dict[comparison] = xwt.DataForXWT(
             y1_values=y1,
             y2_values=y2,
-            mother_wavelet=XWT_MOTHER_DICT[XWT_MOTHER],
-            delta_t=XWT_DT,
-            delta_j=XWT_DJ,
-            initial_scale=XWT_S0,
-            levels=LEVELS,
+            mother_wavelet=results_configs.XWT_MOTHER_DICT[results_configs.XWT_MOTHER],
+            delta_t=results_configs.XWT_DT,
+            delta_j=results_configs.XWT_DJ,
+            initial_scale=results_configs.XWT_S0,
+            levels=results_configs.LEVELS,
         )
     return transform_dict
 
@@ -284,14 +216,16 @@ us_data = helpers.combine_series(dataframes, on=[ids.DATE], how="left")
 # * Add real value columns
 logger.info(
     "Using constant dollars from %s, CPI: %s",
-    CONSTANT_DOLLAR_DATE,
-    us_data[us_data[ids.DATE] == pd.Timestamp(CONSTANT_DOLLAR_DATE)][ids.CPI].iat[0],
+    results_configs.CONSTANT_DOLLAR_DATE,
+    us_data[us_data[ids.DATE] == pd.Timestamp(results_configs.CONSTANT_DOLLAR_DATE)][
+        ids.CPI
+    ].iat[0],
 )
 us_data = helpers.add_real_value_columns(
     data=us_data,
     nominal_columns=[ids.NONDURABLES, ids.DURABLES, ids.SAVINGS],
     cpi_column=ids.CPI,
-    constant_date=CONSTANT_DOLLAR_DATE,
+    constant_date=results_configs.CONSTANT_DOLLAR_DATE,
 )
 us_data = helpers.calculate_diff_in_log(
     data=us_data,
@@ -437,7 +371,7 @@ sns.pairplot(us_data[plot_columns], corner=True, kind="reg", plot_kws={"ci": Non
 ##### Table 1: Descriptive statistics
 # %%
 descriptive_statistics_results = descriptive_stats.generate_descriptive_statistics(
-    us_data, STATISTICS_TESTS, export_table=False
+    us_data, results_configs.STATISTICS_TESTS, export_table=False
 )
 descriptive_statistics_results
 
@@ -446,7 +380,7 @@ descriptive_statistics_results
 # %%
 us_corr = descriptive_stats.correlation_matrix_pvalues(
     data=us_data[[c for c in us_data.columns if "log" in c]],
-    hypothesis_threshold=HYPOTHESIS_THRESHOLD,
+    hypothesis_threshold=results_configs.HYPOTHESIS_THRESHOLD,
     decimals=2,
     display=False,
     export_table=False,
@@ -501,7 +435,7 @@ dwt_measures = [
     ids.DIFF_LOG_REAL_SAVINGS,
 ]
 dwt_dict = create_dwt_dict(
-    us_data.dropna(), dwt_measures, mother_wavelet=dwt_mother_wavelet
+    us_data.dropna(), dwt_measures, mother_wavelet=results_configs.DWT_MOTHER_WAVELET
 )
 
 # * Run DWTs
@@ -532,7 +466,7 @@ for comp in SERIES_COMPARISONS:
         b_coeffs=dwt_results_dict[comp[1]].coeffs,
         time=t,
         levels=dwt_results_dict[comp[0]].levels,
-        wavelet=dwt_mother_wavelet,
+        wavelet=results_configs.DWT_MOTHER_WAVELET,
         figsize=(15, 10),
     )
 # # %%
@@ -607,7 +541,7 @@ for comp in SERIES_COMPARISONS:
 #     b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_SAVINGS].coeffs,
 #     time=t,
 #     levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
-#     wavelet=DWT_MOTHER,
+#     wavelet=results_configs.DWT_MOTHER,
 #     figsize=(15, 10),
 # )
 
@@ -636,11 +570,11 @@ cwt_measures = [
 cwt_dict = create_cwt_dict(
     us_data.dropna(),
     cwt_measures,
-    mother_wavelet=CWT_MOTHER,
-    delta_t=DT,
-    delta_j=DJ,
-    initial_scale=S0,
-    levels=LEVELS,
+    mother_wavelet=results_configs.CWT_MOTHER,
+    delta_t=results_configs.DT,
+    delta_j=results_configs.DJ,
+    initial_scale=results_configs.S0,
+    levels=results_configs.LEVELS,
 )
 
 cwt_results_dict = create_cwt_results_dict(cwt_dict, cwt_measures, normalize=True)
@@ -648,14 +582,14 @@ cwt_results_dict = create_cwt_results_dict(cwt_dict, cwt_measures, normalize=Tru
 # %%
 # * Plot CWTs
 plt.close("all")
-_, axs = plt.subplots(len(cwt_results_dict), **CWT_FIG_PROPS)
+_, axs = plt.subplots(len(cwt_results_dict), **results_configs.CWT_FIG_PROPS)
 
 for i, m in enumerate(cwt_results_dict):
     cwt.plot_cwt(
         axs[i],
         cwt_dict[m],
         cwt_results_dict[m],
-        **CWT_PLOT_PROPS,
+        **results_configs.CWT_PLOT_PROPS,
     )
 
     # * Set labels/title
@@ -699,7 +633,7 @@ for i, comp in enumerate(SERIES_COMPARISONS):
         include_significance=True,
         include_cone_of_influence=True,
         include_phase_difference=True,
-        **XWT_PLOT_PROPS,
+        **results_configs.XWT_PLOT_PROPS,
     )
     # * Invert y axis
     ax.set_ylim(ax.get_ylim()[::-1])
@@ -846,7 +780,7 @@ for comp in SERIES_COMPARISONS:
         input_coeffs=dwt_results_dict[comp[0]].coeffs,
         output_coeffs=dwt_results_dict[comp[1]].coeffs,
         levels=dwt_results_dict[comp[0]].levels,
-        mother_wavelet=dwt_mother_wavelet,
+        mother_wavelet=results_configs.DWT_MOTHER_WAVELET,
     )
     print(f"\nRegressing {comp[1]} on {comp[0]}")
     print(time_scale_results.as_text())
