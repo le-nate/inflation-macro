@@ -260,12 +260,6 @@ dataframes = [
     save_rate,
 ]
 us_data = helpers.combine_series(dataframes, on=[ids.DATE], how="left")
-# us_data = cpi.merge(measured_inf, how="left")
-# us_data = us_data.merge(inf_exp, how="left")
-# us_data = us_data.merge(nondur_consump, how="left")
-# us_data = us_data.merge(dur_consump, how="left")
-# us_data = us_data.merge(save, how="left")
-# us_data = us_data.merge(save_rate, how="left")
 
 # # * Remove rows without data for all measures
 # us_data.dropna(inplace=True)

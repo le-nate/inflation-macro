@@ -71,4 +71,16 @@ def calculate_diff_in_log(
 
 
 def combine_series(dataframes: List[pd.DataFrame], **kwargs) -> pd.DataFrame:
+    """Merge dataframes from a list
+
+    Args:
+        dataframes List[pd.DataFrame]: List of dataframes to merge
+
+    Kwargs:
+        on List[str]: Column(s) to merge on
+        how {str}: 'left', 'right', 'inner', 'outer'
+
+    Returns:
+        pd.DataFrame: Combined dataframe
+    """
     return reduce(lambda left, right: pd.merge(left, right, **kwargs), dataframes)
