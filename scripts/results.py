@@ -29,7 +29,7 @@ from src import retrieve_data
 
 # * Logging settings
 logger = logging.getLogger(__name__)
-define_other_module_log_level("Warning")
+define_other_module_log_level("Error")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
@@ -310,114 +310,116 @@ us_data = helpers.calculate_diff_in_log(
 usa_sliced = pd.concat([us_data.head(), us_data.tail()])
 usa_sliced
 
+# # %% [markdown]
+# # French data
+# # %%
+# # * CPI
+# raw_data = retrieve_data.get_fed_data(ids.FR_CPI)
+# fr_cpi, _, _ = retrieve_data.clean_fed_data(raw_data)
+# fr_cpi.rename(columns={"value": ids.CPI}, inplace=True)
+
+# # * Measured inflation
+# raw_data = retrieve_data.get_fed_data(ids.FR_CPI, units="pc1", freq="m")
+# fr_inf, _, _ = retrieve_data.clean_fed_data(raw_data)
+# fr_inf.rename(columns={"value": ids.INFLATION}, inplace=True)
+
+# # * Inflation expectations
+# _, fr_exp = process_camme.preprocess(process_camme.camme_dir)
+# ## Remove random lines with month as letter
+# fr_exp = fr_exp[fr_exp["month"].apply(isinstance, args=(int,))]
+# ## Create date column
+# fr_exp[ids.DATE] = pd.to_datetime(fr_exp[["year", "month"]].assign(DAY=1))
+# ## Use just quantitative expectations and date
+# fr_exp = fr_exp[[ids.DATE, "inf_exp_val_inc", "inf_exp_val_dec"]]
+# ## Convert to negative for averaging
+# fr_exp["inf_exp_val_dec"] = fr_exp["inf_exp_val_dec"] * -1
+# ## Melt then pivot to get average expectation for each month
+# fr_exp_melt = pd.melt(fr_exp, [ids.DATE])
+# fr_exp = pd.pivot_table(fr_exp_melt, index=ids.DATE, aggfunc="mean")
+# fr_exp.rename(columns={"value": ids.EXPECTATIONS}, inplace=True)
+
+# # * Food consumption
+# raw_data = retrieve_data.get_insee_data(ids.FR_FOOD_CONSUMPTION)
+# fr_food_cons, _, _ = retrieve_data.clean_insee_data(raw_data)
+# fr_food_cons.rename(columns={"value": "food"}, inplace=True)
+
+# # * Goods consumption
+# raw_data = retrieve_data.get_insee_data(ids.FR_GOODS_CONSUMPTION)
+# fr_goods_cons, _, _ = retrieve_data.clean_insee_data(raw_data)
+# fr_goods_cons.rename(columns={"value": "goods"}, inplace=True)
+
+# # * Durables consumption
+# raw_data = retrieve_data.get_insee_data(ids.FR_DURABLES_CONSUMPTION)
+# fr_dur_cons, _, _ = retrieve_data.clean_insee_data(raw_data)
+# fr_dur_cons.rename(columns={"value": "durables"}, inplace=True)
+
+# # %%
+# dataframes = [fr_cpi, fr_inf, fr_exp, fr_food_cons, fr_goods_cons, fr_dur_cons]
+# fr_data = helpers.combine_series(dataframes, on=[ids.DATE], how="left")
+
+# fr_sliced = pd.concat([fr_data.head(), fr_data.tail()])
+# fr_sliced
+
+# # %%
+# # * Create measured inflation dataframe
+# inf_data = pd.merge(
+#     us_data[[ids.DATE, ids.INFLATION, ids.EXPECTATIONS]],
+#     fr_data[[ids.DATE, ids.INFLATION, ids.EXPECTATIONS]],
+#     on=ids.DATE,
+#     suffixes=("_us", "_fr"),
+# )
+
+# inf_data.columns = [
+#     "Date",
+#     "Measured (US)",
+#     "Expectations (US)",
+#     "Measured (France)",
+#     "Expectations (France)",
+# ]
+
+# # %%
+# inf_melt = pd.melt(inf_data, ["Date"])
+# inf_melt.rename(columns={"value": "Measured (%)"}, inplace=True)
+
+# # %% [markdown]
+# ##### Figure XX - Time series: Measured Inflation (US and France)
+# # %%
+# _, (ax, bx) = plt.subplots(2, 1, sharex=True)
+
+# # * US subplot
+# measures_to_plot = ["Measured (US)", "Expectations (US)"]
+# data = inf_melt[inf_melt["variable"].isin(measures_to_plot)]
+# ax = sns.lineplot(data=data, x="Date", y="Measured (%)", hue="variable", ax=ax)
+# ax.legend().set_title(None)
+
+# # * French subplot
+# measures_to_plot = ["Measured (France)", "Expectations (France)"]
+# data = inf_melt[inf_melt["variable"].isin(measures_to_plot)]
+# bx = sns.lineplot(data=data, x="Date", y="Measured (%)", hue="variable", ax=bx)
+# bx.legend().set_title(None)
+# plt.suptitle("Inflation Rates, US and France")
+# plt.tight_layout()
+
+# # %%[markdown]
+# ## Table 1 Descriptive statistics
+
+# # %%
+# usa_melt = pd.melt(us_data, [ids.DATE])
+# usa_melt.rename(columns={"value": "Billions ($)"}, inplace=True)
+
+# # %% [markdown]
+# ##### Figure 2 - Time series: Inflation Expectations, Nondurables Consumption,
+# ##### Durables Consumption, and Savings (US)
+# # %%
+# _, (bx) = plt.subplots(1, 1)
+# measures_to_plot = [ids.NONDURABLES, ids.DURABLES]
+# data = usa_melt[usa_melt["variable"].isin(measures_to_plot)]
+# bx = sns.lineplot(data=data, x=ids.DATE, y="Billions ($)", hue="variable", ax=bx)
+# plt.title("Real consumption levels, United States (2017 dollars)")
+
 # %% [markdown]
-# French data
-# %%
-# * CPI
-raw_data = retrieve_data.get_fed_data(ids.FR_CPI)
-fr_cpi, _, _ = retrieve_data.clean_fed_data(raw_data)
-fr_cpi.rename(columns={"value": ids.CPI}, inplace=True)
-
-# * Measured inflation
-raw_data = retrieve_data.get_fed_data(ids.FR_CPI, units="pc1", freq="m")
-fr_inf, _, _ = retrieve_data.clean_fed_data(raw_data)
-fr_inf.rename(columns={"value": ids.INFLATION}, inplace=True)
-
-# * Inflation expectations
-_, fr_exp = process_camme.preprocess(process_camme.camme_dir)
-## Remove random lines with month as letter
-fr_exp = fr_exp[fr_exp["month"].apply(isinstance, args=(int,))]
-## Create date column
-fr_exp[ids.DATE] = pd.to_datetime(fr_exp[["year", "month"]].assign(DAY=1))
-## Use just quantitative expectations and date
-fr_exp = fr_exp[[ids.DATE, "inf_exp_val_inc", "inf_exp_val_dec"]]
-## Convert to negative for averaging
-fr_exp["inf_exp_val_dec"] = fr_exp["inf_exp_val_dec"] * -1
-## Melt then pivot to get average expectation for each month
-fr_exp_melt = pd.melt(fr_exp, [ids.DATE])
-fr_exp = pd.pivot_table(fr_exp_melt, index=ids.DATE, aggfunc="mean")
-fr_exp.rename(columns={"value": ids.EXPECTATIONS}, inplace=True)
-
-# * Food consumption
-raw_data = retrieve_data.get_insee_data(ids.FR_FOOD_CONSUMPTION)
-fr_food_cons, _, _ = retrieve_data.clean_insee_data(raw_data)
-fr_food_cons.rename(columns={"value": "food"}, inplace=True)
-
-# * Goods consumption
-raw_data = retrieve_data.get_insee_data(ids.FR_GOODS_CONSUMPTION)
-fr_goods_cons, _, _ = retrieve_data.clean_insee_data(raw_data)
-fr_goods_cons.rename(columns={"value": "goods"}, inplace=True)
-
-# * Durables consumption
-raw_data = retrieve_data.get_insee_data(ids.FR_DURABLES_CONSUMPTION)
-fr_dur_cons, _, _ = retrieve_data.clean_insee_data(raw_data)
-fr_dur_cons.rename(columns={"value": "durables"}, inplace=True)
-
-# %%
-dataframes = [fr_cpi, fr_inf, fr_exp, fr_food_cons, fr_goods_cons, fr_dur_cons]
-fr_data = helpers.combine_series(dataframes, on=[ids.DATE], how="left")
-
-fr_sliced = pd.concat([fr_data.head(), fr_data.tail()])
-fr_sliced
-
-# %%
-# * Create measured inflation dataframe
-inf_data = pd.merge(
-    us_data[[ids.DATE, ids.INFLATION, ids.EXPECTATIONS]],
-    fr_data[[ids.DATE, ids.INFLATION, ids.EXPECTATIONS]],
-    on=ids.DATE,
-    suffixes=("_us", "_fr"),
-)
-
-inf_data.columns = [
-    "Date",
-    "Measured (US)",
-    "Expectations (US)",
-    "Measured (France)",
-    "Expectations (France)",
-]
-
-# %%
-inf_melt = pd.melt(inf_data, ["Date"])
-inf_melt.rename(columns={"value": "Measured (%)"}, inplace=True)
-
-# %% [markdown]
-##### Figure XX - Time series: Measured Inflation (US and France)
-# %%
-_, (ax, bx) = plt.subplots(2, 1, sharex=True)
-
-# * US subplot
-measures_to_plot = ["Measured (US)", "Expectations (US)"]
-data = inf_melt[inf_melt["variable"].isin(measures_to_plot)]
-ax = sns.lineplot(data=data, x="Date", y="Measured (%)", hue="variable", ax=ax)
-ax.legend().set_title(None)
-
-# * French subplot
-measures_to_plot = ["Measured (France)", "Expectations (France)"]
-data = inf_melt[inf_melt["variable"].isin(measures_to_plot)]
-bx = sns.lineplot(data=data, x="Date", y="Measured (%)", hue="variable", ax=bx)
-bx.legend().set_title(None)
-plt.suptitle("Inflation Rates, US and France")
-plt.tight_layout()
-
-# %%[markdown]
-## Table 1 Descriptive statistics
-
-# %%
-usa_melt = pd.melt(us_data, [ids.DATE])
-usa_melt.rename(columns={"value": "Billions ($)"}, inplace=True)
-
-# %% [markdown]
-##### Figure 2 - Time series: Inflation Expectations, Nondurables Consumption, Durables Consumption, and Savings (US)
-# %%
-_, (bx) = plt.subplots(1, 1)
-measures_to_plot = [ids.NONDURABLES, ids.DURABLES]
-data = usa_melt[usa_melt["variable"].isin(measures_to_plot)]
-bx = sns.lineplot(data=data, x=ids.DATE, y="Billions ($)", hue="variable", ax=bx)
-plt.title("Real consumption levels, United States (2017 dollars)")
-
-# %% [markdown]
-##### Figure 3 - Distribution of Inflation Expectations, Nondurables Consumption, Durables Consumption, and Savings (US)
+##### Figure 3 - Distribution of Inflation Expectations, Nondurables Consumption,
+##### Durables Consumption, and Savings (US)
 # %%
 plot_columns = [
     ids.DIFF_LOG_CPI,
@@ -451,27 +453,29 @@ us_corr = descriptive_stats.correlation_matrix_pvalues(
 )
 us_corr
 
-# %% [markdown]
-##### Figure XX - Time series: Inflation Expectations, Food Consumption, Durables Consumption (France)
-# %%
-fr_melt = pd.melt(fr_data, [ids.DATE])
-fr_melt.rename(columns={"value": "Billions (€)"}, inplace=True)
+# # %% [markdown]
+# ##### Figure XX - Time series: Inflation Expectations, Food Consumption,
+# ##### Durables Consumption (France)
+# # %%
+# fr_melt = pd.melt(fr_data, [ids.DATE])
+# fr_melt.rename(columns={"value": "Billions (€)"}, inplace=True)
 
-fig, (ax, bx) = plt.subplots(1, 2)
-measures_to_plot = ["food", "durables"]
-data = fr_melt[fr_melt["variable"].isin(measures_to_plot)]
-ax = sns.lineplot(data=data, x=ids.DATE, y="Billions (€)", hue="variable", ax=ax)
-plt.title("Consumption levels, France")
+# fig, (ax, bx) = plt.subplots(1, 2)
+# measures_to_plot = ["food", "durables"]
+# data = fr_melt[fr_melt["variable"].isin(measures_to_plot)]
+# ax = sns.lineplot(data=data, x=ids.DATE, y="Billions (€)", hue="variable", ax=ax)
+# plt.title("Consumption levels, France")
 
-# %% [markdown]
-##### Figure XX - Distribution of Inflation Expectations, Nondurables Consumption, Durables Consumption (France)
-# %%
-sns.pairplot(fr_data, corner=True, kind="reg", plot_kws={"ci": None})
+# # %% [markdown]
+# ##### Figure XX - Distribution of Inflation Expectations, Nondurables Consumption,
+# ##### Durables Consumption (France)
+# # %%
+# sns.pairplot(fr_data, corner=True, kind="reg", plot_kws={"ci": None})
 
-# %% [markdown]
-##### Table 1: Descriptive statistics
-# %%
-fr_data.describe()
+# # %% [markdown]
+# ##### Table 1: Descriptive statistics
+# # %%
+# fr_data.describe()
 
 # %% [markdown]
 ## 3.2) Exploratory analysis
@@ -482,11 +486,16 @@ fr_data.describe()
 # %%
 # * Create dwt dict
 dwt_measures = [
+    ids.INFLATION,
     ids.EXPECTATIONS,
     ids.NONDURABLES_CHG,
     ids.DURABLES_CHG,
     ids.SAVINGS_CHG,
+    ids.DIFF_LOG_CPI,
     ids.DIFF_LOG_EXPECTATIONS,
+    ids.DIFF_LOG_NONDURABLES,
+    ids.DIFF_LOG_DURABLES,
+    ids.DIFF_LOG_SAVINGS,
     ids.DIFF_LOG_REAL_NONDURABLES,
     ids.DIFF_LOG_REAL_DURABLES,
     ids.DIFF_LOG_REAL_SAVINGS,
@@ -670,11 +679,21 @@ xwt_results_dict = create_xwt_results_dict(
 )
 
 # * Plot XWT power spectrum
-_, axs = plt.subplots(len(xwt_comparisons), 1, figsize=(10, 8), sharex=True)
+TOTAL_SUBPLOTS = len(SERIES_COMPARISONS)
+PLOT_COLS = 2
+PLOT_ROWS = TOTAL_SUBPLOTS // 2
+if TOTAL_SUBPLOTS % PLOT_COLS != 0:
+    PLOT_ROWS += 1
 
-for i, comp in enumerate(xwt_comparisons):
+fig = plt.figure(1, figsize=(10, 10))
+axes = []
+POSITION = 0
+for i, comp in enumerate(SERIES_COMPARISONS):
+    POSITION = i + 1
+    ax = fig.add_subplot(PLOT_ROWS, PLOT_COLS, POSITION)
+    axes.append(ax)
     xwt.plot_xwt(
-        axs[i],
+        ax,
         xwt_dict[comp],
         xwt_results_dict[comp],
         include_significance=True,
@@ -682,21 +701,27 @@ for i, comp in enumerate(xwt_comparisons):
         include_phase_difference=True,
         **XWT_PLOT_PROPS,
     )
-
     # * Invert y axis
-    axs[i].set_ylim(axs[i].get_ylim()[::-1])
+    ax.set_ylim(ax.get_ylim()[::-1])
 
     # * Set y axis tick labels
     y_ticks = 2 ** np.arange(
         np.ceil(np.log2(xwt_results_dict[comp].period.min())),
         np.ceil(np.log2(xwt_results_dict[comp].period.max())),
     )
-    axs[i].set_yticks(np.log2(y_ticks))
-    axs[i].set_yticklabels(y_ticks)
+    ax.set_yticks(np.log2(y_ticks))
+    if i == 0:
+        ax.set_ylabel("Period (years)")
+    if i % 2 == 0:
+        ax.set_yticklabels(y_ticks)
+    else:
+        ## Right-hand column use y axis from left-hand column
+        ax.tick_params("y", labelleft=False)
+    ax.set_title(f"{comp[0]} X {comp[1]} (US)")
+for i, ax in enumerate(axes[1:]):
+    ax.sharex(axes[0])
 
-    axs[i].set_title(f"{comp[0]} X {comp[1]} (US)")
-    axs[i].set_ylabel("Period (years)")
-
+plt.tight_layout()
 plt.show()
 
 # %% [markdown]
