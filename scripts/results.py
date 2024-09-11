@@ -2,6 +2,7 @@
 
 # %%
 import logging
+from pathlib import Path
 import sys
 
 import matplotlib.pyplot as plt
@@ -46,6 +47,12 @@ SERIES_COMPARISONS = [
     (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_NONDURABLES),
     (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_DURABLES),
     (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_SAVINGS),
+    (ids.EXPECTATIONS, ids.DIFF_LOG_NONDURABLES),
+    (ids.EXPECTATIONS, ids.DIFF_LOG_DURABLES),
+    (ids.EXPECTATIONS, ids.DIFF_LOG_SAVINGS),
+    (ids.EXPECTATIONS, ids.DIFF_LOG_REAL_NONDURABLES),
+    (ids.EXPECTATIONS, ids.DIFF_LOG_REAL_DURABLES),
+    (ids.EXPECTATIONS, ids.DIFF_LOG_REAL_SAVINGS),
     (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_NONDURABLES),
     (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_DURABLES),
     (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_SAVINGS),
@@ -331,21 +338,23 @@ dwt_results_dict = create_dwt_results_dict(dwt_dict, dwt_measures)
 t = us_data.dropna()[ids.DATE].to_numpy()
 
 # %% [markdown]
-# Figure 4 - Time scale decomposition of expectations and nondurables consumption (US)
-# %%
-# * Plot comparison decompositions of expectations and other measure
-# dwt_comparisons = [
-#     (ids.EXPECTATIONS, ids.NONDURABLES_CHG),
-#     (ids.EXPECTATIONS, ids.DURABLES_CHG),
-#     (ids.EXPECTATIONS, ids.SAVINGS_CHG),
-#     (ids.EXPECTATIONS, ids.DIFF_LOG_REAL_NONDURABLES),
-#     (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_NONDURABLES),
-#     (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_DURABLES),
-#     (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_SAVINGS),
-# ]
+## Figure XX - Time scale decomposition of expectations
+fig = dwt.plot_components(
+    label=ids.EXPECTATIONS,
+    coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
+    time=t,
+    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
+    wavelet=results_configs.DWT_MOTHER_WAVELET,
+    figsize=(15, 10),
+    sharex=True,
+)
+plt.legend("", frameon=False)
 
-for comp in SERIES_COMPARISONS:
-    _ = regression.plot_compare_components(
+# %% [markdown]
+## Figure 4 - Time scale decomposition of expectations and nondurables consumption (US)
+# * Plot comparison decompositions of expectations and other measure
+for comp in SERIES_COMPARISONS[14:17]:
+    fig = regression.plot_compare_components(
         a_label=comp[0],
         b_label=comp[1],
         a_coeffs=dwt_results_dict[comp[0]].coeffs,
@@ -353,87 +362,15 @@ for comp in SERIES_COMPARISONS:
         time=t,
         levels=dwt_results_dict[comp[0]].levels,
         wavelet=results_configs.DWT_MOTHER_WAVELET,
-        figsize=(15, 10),
+        figsize=(10, 15),
+        sharex=True,
     )
-# # %%
-# # * Plot comparison decompositions of expectations and other measure
-# _ = regression.plot_compare_components(
-#     a_label=ids.EXPECTATIONS,
-#     b_label=ids.DURABLES_CHG,
-#     a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-#     b_coeffs=dwt_results_dict[ids.DURABLES_CHG].coeffs,
-#     time=t,
-#     levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-#     wavelet=dwt_mother_wavelet,
-#     figsize=(15, 10),
-# )
-# # %%
-# # * Plot comparison decompositions of expectations and other measure
-# _ = regression.plot_compare_components(
-#     a_label=ids.EXPECTATIONS,
-#     b_label=ids.SAVINGS_CHG,
-#     a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-#     b_coeffs=dwt_results_dict[ids.SAVINGS_CHG].coeffs,
-#     time=t,
-#     levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-#     wavelet=dwt_mother_wavelet,
-#     figsize=(15, 10),
-# )
-# # %%
-# # * Plot comparison decompositions of expectations and other measure
-# _ = regression.plot_compare_components(
-#     a_label=ids.EXPECTATIONS,
-#     b_label=ids.DIFF_LOG_REAL_NONDURABLES,
-#     a_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-#     b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_NONDURABLES].coeffs,
-#     time=t,
-#     levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-#     wavelet=dwt_mother_wavelet,
-#     figsize=(15, 10),
-# )
-# # %%
-# _ = regression.plot_compare_components(
-#     a_label=ids.DIFF_LOG_EXPECTATIONS,
-#     b_label=ids.DIFF_LOG_REAL_NONDURABLES,
-#     a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
-#     b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_NONDURABLES].coeffs,
-#     time=t,
-#     levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
-#     wavelet=dwt_mother_wavelet,
-#     figsize=(15, 10),
-# )
-
-# # %% [markdown]
-# # Figure 5 - Time scale decomposition of expectations and durables consumption (US)
-# # %%
-# _ = regression.plot_compare_components(
-#     a_label=ids.DIFF_LOG_EXPECTATIONS,
-#     b_label=ids.DIFF_LOG_REAL_DURABLES,
-#     a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
-#     b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_DURABLES].coeffs,
-#     time=t,
-#     levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
-#     wavelet=dwt_mother_wavelet,
-#     figsize=(15, 10),
-# )
-
-# # %% [markdown]
-# # Figure XX - Time scale decomposition of expectations and savings (US)
-# # %%
-# _ = regression.plot_compare_components(
-#     a_label=ids.DIFF_LOG_EXPECTATIONS,
-#     b_label=ids.DIFF_LOG_REAL_SAVINGS,
-#     a_coeffs=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].coeffs,
-#     b_coeffs=dwt_results_dict[ids.DIFF_LOG_REAL_SAVINGS].coeffs,
-#     time=t,
-#     levels=dwt_results_dict[ids.DIFF_LOG_EXPECTATIONS].levels,
-#     wavelet=results_configs.DWT_MOTHER,
-#     figsize=(15, 10),
-# )
+    parent_dir = Path(__file__).parents[1]
+    export_file = parent_dir / "results" / f"{comp[0]}_{comp[1]}.png"
+    plt.savefig(export_file, bbox_inches="tight")
 
 # %% [markdown]
 ### 3.2.2) Individual time series: Continuous wavelet transforms
-# %%
 cwt_measures = [
     # ids.INFLATION,
     ids.EXPECTATIONS,
@@ -548,7 +485,6 @@ plt.show()
 ## 3.3) Regression analysis
 ### 3.3.1) Baseline model
 # Nondurables consumption
-# %%
 results_nondur = regression.simple_regression(
     us_data.dropna(), ids.EXPECTATIONS, ids.NONDURABLES_CHG
 )
@@ -556,7 +492,6 @@ results_nondur.summary()
 
 # %% [markdown]
 # Durables consumption
-# %%
 results_dur = regression.simple_regression(
     us_data.dropna(), ids.EXPECTATIONS, ids.DURABLES_CHG
 )
@@ -564,29 +499,24 @@ results_dur.summary()
 
 # %% [markdown]
 # Savings
-# %%
-results_dur = regression.simple_regression(
-    us_data.dropna(), ids.EXPECTATIONS, ids.SAVINGS_CHG
+results_sav = regression.simple_regression(
+    us_data.dropna(), ids.DIFF_LOG_EXPECTATIONS, ids.SAVINGS_CHG
 )
-results_dur.summary()
+results_sav.summary()
 
 # %% [markdown]
 ## 3.3.2) Wavelet approximation
 # Figure 12 - Wavelet Smoothing of Inflation Expectations (US)
-
-# %%
 dwt_results_dict[ids.EXPECTATIONS].smooth_signal(
     dwt_dict[ids.EXPECTATIONS].y_values, dwt_dict[ids.EXPECTATIONS].mother_wavelet
 )
-fig, title = dwt.plot_smoothing(
+fig = dwt.plot_smoothing(
     dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
     t,
     dwt_dict[ids.EXPECTATIONS].y_values,
     figsize=(10, 10),
 )
-plt.xlabel("Year")
-plt.ylabel(f"{title.capitalize()}")
-fig.tight_layout()
+plt.tight_layout()
 plt.show()
 
 
@@ -598,8 +528,6 @@ plt.show()
 # on inflation expectations, we use S_2, removing D_1 and D_2. Table 4 shows
 # the results. Overall, there is little change in the results compared to the
 # simple regression.
-
-# %%
 approximations = regression.wavelet_approximation(
     smooth_t_dict=dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
     original_y=dwt_dict[ids.NONDURABLES_CHG].y_values,
@@ -618,8 +546,6 @@ apprx.summary()
 # Given how absolutely inconclusive the OLS regression is, we further test the
 # impact of a regression with almost purely smoothed expectations in S_5=S_6+D_6
 # as well. Again, we cannot reject the null hypothesis (Table 6).
-
-# %%
 approximations = regression.wavelet_approximation(
     smooth_t_dict=dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
     original_y=dwt_dict[ids.DURABLES_CHG].y_values,
@@ -633,17 +559,13 @@ apprx.summary()
 # %% [markdown]
 # Table 6 - Wavelet Approximation: OLS Regression Inflation Expectations and
 # Durables Consumption with S_5 (US) <br><br>
-
-# %%
 # * Remove D_1 through D_5
 apprx = approximations[5]
 apprx.summary()
 
 # %% [markdown]
 # Table XX - Wavelet Approximation: OLS Regression Inflation Expectations and
-# Savings (US) <br><br>
-
-# %%
+# Savings (US)
 approximations = regression.wavelet_approximation(
     smooth_t_dict=dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
     original_y=dwt_dict[ids.SAVINGS_CHG].y_values,
@@ -654,13 +576,10 @@ approximations = regression.wavelet_approximation(
 apprx = approximations[2]
 apprx.summary()
 
-
 # %% [markdown]
 ## 3.3) Time scale regression
 # Table 7 - Time Scale Decomposition: OLS Regression of Nondurables Consumption
 # on Inflation Expectations (US)
-
-# %%
 for comp in SERIES_COMPARISONS:
     time_scale_results = regression.time_scale_regression(
         input_coeffs=dwt_results_dict[comp[0]].coeffs,
