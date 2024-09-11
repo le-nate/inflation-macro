@@ -32,10 +32,10 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 # * Define title and labels for plots
-LABEL = "Inflation (US)"
+LABEL = "Expected inflation"
 UNITS = "%"
 
-MEASURE = ids.US_CPI
+MEASURE = ids.US_INF_EXPECTATIONS
 
 NORMALIZE = True  # Define normalization
 DT = 1 / 12  # In years
@@ -88,7 +88,7 @@ def run_cwt(
     cwt_data: Type[DataForCWT],
     normalize: bool = True,
     standardize: bool = False,
-    **kwargs
+    **kwargs,
 ) -> Type[ResultsFromCWT]:
     """Conducts Continuous Wavelet Transform\n
     Returns power spectrum, period, cone of influence, and significance levels (95%)"""
@@ -139,7 +139,7 @@ def plot_cwt(
     cwt_results: Type[ResultsFromCWT],
     include_significance: bool = True,
     include_cone_of_influence: bool = True,
-    **kwargs
+    **kwargs,
 ) -> None:
     """Plot Power Spectrum for Continuous Wavelet Transform"""
     _ = cwt_ax.contourf(
@@ -186,10 +186,19 @@ def plot_cwt(
 def main() -> None:
     """Run script"""
     # * Retrieve dataset
-    raw_data = retrieve_data.get_fed_data(MEASURE, units="pc1", freqs="m")
-    _, t_date, y = retrieve_data.clean_fed_data(raw_data)
+    raw_data = retrieve_data.get_fed_data(MEASURE)
+    df, t_date, _ = retrieve_data.clean_fed_data(raw_data)
+    df.rename(columns={"value": ids.EXPECTATIONS}, inplace=True)
 
-    data_for_cwt = DataForCWT(t_date, y, MOTHER, DT, DJ, S0, LEVELS)
+    data_for_cwt = DataForCWT(
+        t_date,
+        df[f"{ids.EXPECTATIONS}"].to_numpy(),
+        MOTHER,
+        DT,
+        DJ,
+        S0,
+        LEVELS,
+    )
 
     results_from_cwt = run_cwt(data_for_cwt, normalize=True)
 
@@ -211,9 +220,9 @@ def main() -> None:
     plot_cwt(ax, data_for_cwt, results_from_cwt, **cwt_plot_props)
 
     # * Set labels/title
-    ax.set_xlabel("")
-    ax.set_ylabel("Period (years)")
-    ax.set_title(LABEL)
+    ax.set_xlabel("", size=15)
+    ax.set_ylabel("Period (years)", size=15)
+    ax.set_title(LABEL, size=15)
 
     plt.show()
 

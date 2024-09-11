@@ -263,7 +263,7 @@ def main() -> None:
     raw_data = retrieve_data.get_fed_data(measure_1)
     df1, _, _ = retrieve_data.clean_fed_data(raw_data)
 
-    measure_2 = ids.US_CPI
+    measure_2 = ids.US_NONDURABLES_CONSUMPTION
     raw_data = retrieve_data.get_fed_data(measure_2)
     df2, _, _ = retrieve_data.clean_fed_data(raw_data)
 
@@ -284,11 +284,31 @@ def main() -> None:
     y1 = wavelet_helpers.standardize_series(y1, detrend=False, remove_mean=True)
     y2 = wavelet_helpers.standardize_series(y2, detrend=True, remove_mean=False)
 
+    # * For diff in log
+    y1_diff_log = dfcombo["diff_log_value_1"].to_numpy()
+    y1_diff_log = wavelet_helpers.standardize_series(
+        y1_diff_log, detrend=True, remove_mean=False
+    )
+    y2_diff_log = dfcombo["diff_log_value_2"].to_numpy()
+    y2_diff_log = wavelet_helpers.standardize_series(
+        y2_diff_log, detrend=True, remove_mean=False
+    )
+
+    # * For diff in log
+    y1_diff_log = dfcombo["diff_log_value_1"].to_numpy()
+    y1_diff_log = wavelet_helpers.standardize_series(
+        y1_diff_log, detrend=True, remove_mean=False
+    )
+    y2_diff_log = dfcombo["diff_log_value_2"].to_numpy()
+    y2_diff_log = wavelet_helpers.standardize_series(
+        y2_diff_log, detrend=True, remove_mean=False
+    )
+
     mother_xwt = MOTHER_DICT[MOTHER]
 
     xwt_data = DataForXWT(
         y1_values=y1,
-        y2_values=y2,
+        y2_values=y2_diff_log,
         mother_wavelet=mother_xwt,
         delta_t=DT,
         delta_j=DJ,
@@ -298,16 +318,8 @@ def main() -> None:
 
     results_from_xwt = run_xwt(xwt_data, ignore_strong_trends=False)
 
-    # * For diff in log
-    y2_diff_log = dfcombo["diff_log_value_2"].to_numpy()
-    y2_diff_log = wavelet_helpers.standardize_series(
-        y2_diff_log, detrend=True, remove_mean=False
-    )
-
-    mother_xwt = MOTHER_DICT[MOTHER]
-
     diff_log_xwt_data = DataForXWT(
-        y1_values=y1,
+        y1_values=y1_diff_log,
         y2_values=y2_diff_log,
         mother_wavelet=mother_xwt,
         delta_t=DT,
@@ -319,20 +331,20 @@ def main() -> None:
     diff_log_results_from_xwt = run_xwt(diff_log_xwt_data, ignore_strong_trends=False)
 
     # * Plot XWT power spectrum
-    _, axs = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    _, axs = plt.subplots(1, 1, figsize=(10, 8), sharex=True)
+
+    # plot_xwt(
+    #     axs[0],
+    #     xwt_data,
+    #     results_from_xwt,
+    #     include_significance=True,
+    #     include_cone_of_influence=True,
+    #     include_phase_difference=True,
+    #     **XWT_PLOT_PROPS,
+    # )
 
     plot_xwt(
-        axs[0],
-        xwt_data,
-        results_from_xwt,
-        include_significance=True,
-        include_cone_of_influence=True,
-        include_phase_difference=True,
-        **XWT_PLOT_PROPS,
-    )
-
-    plot_xwt(
-        axs[1],
+        axs,
         diff_log_xwt_data,
         diff_log_results_from_xwt,
         include_significance=True,
@@ -341,20 +353,48 @@ def main() -> None:
         **XWT_PLOT_PROPS,
     )
 
-    # * Invert y axis
-    for ax, results in zip(axs, [results_from_xwt, diff_log_results_from_xwt]):
-        ax.set_ylim(ax.get_ylim()[::-1])
+    # # * Invert y axis
+    # for ax, results, diff in zip(
+    #     axs, [results_from_xwt, diff_log_results_from_xwt], ["", " (Diff-in-log)"]
+    # ):
+    #     ax.set_ylim(ax.get_ylim()[::-1])
 
-        # * Set y axis tick labels
-        y_ticks = 2 ** np.arange(
-            np.ceil(np.log2(results.period.min())),
-            np.ceil(np.log2(results.period.max())),
-        )
-        ax.set_yticks(np.log2(y_ticks))
-        ax.set_yticklabels(y_ticks)
+    #     # * Set y axis tick labels
+    #     y_ticks = 2 ** np.arange(
+    #         np.ceil(np.log2(results.period.min())),
+    #         np.ceil(np.log2(results.period.max())),
+    #     )
+    #     ax.set_yticks(np.log2(y_ticks))
+    #     ax.set_yticklabels(y_ticks)
 
-        ax.set_title("Inflation Expectations X CPI Inflation (US)")
-        ax.set_ylabel("Period (years)")
+    #     ax.set_title(f"{measure_1} X {measure_2}{diff}")
+    #     ax.set_ylabel("Period (years)")
+
+    axs.set_ylim(axs.get_ylim()[::-1])
+
+    # * Set y axis tick labels
+    y_ticks = 2 ** np.arange(
+        np.ceil(np.log2(results_from_xwt.period.min())),
+        np.ceil(np.log2(results_from_xwt.period.max())),
+    )
+    axs.set_yticks(np.log2(y_ticks))
+    axs.set_yticklabels(y_ticks, size=15)
+
+    # * Set x axis tick labels
+    dates = df1["date"].to_list()
+    x_dates = [dates[0]] + [dates[i + 99] for i in range(0, 500, 100)]
+    x_ticks = [str(date.year) for date in x_dates]
+    x_tick_positions = [i for i in range(0, 600, 100)]
+    logger.debug("dates %s", x_ticks)
+    logger.debug("dates %s", x_tick_positions)
+    logger.debug("dates len %s", len(x_ticks))
+    axs.set_xticks(x_tick_positions)
+    axs.set_xticklabels(x_ticks, size=15)
+    # date_format = DateFormatter("%Y")
+    # axs.xaxis.set_major_formatter(date_format)
+
+    axs.set_title("Expected inflation X Nondurables consumption (Diff-in-log)", size=20)
+    axs.set_ylabel("Period (years)", size=20)
 
     plt.show()
 
