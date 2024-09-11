@@ -1,10 +1,28 @@
 """Helper functions for wavelet transforms"""
 
+import logging
+import sys
 from typing import List
 
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
+
+from src.utils.logging_helpers import define_other_module_log_level
+
+# * Logging settings
+logger = logging.getLogger(__name__)
+define_other_module_log_level("Error")
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
+
+
+def align_series(t_values: npt.NDArray, series_vlaues: npt.NDArray) -> npt.NDArray:
+    """Aligns series lengths when they are not equal by removing the first value"""
+    if len(series_vlaues) != len(t_values):
+        logger.warning("Trimming series signal")
+        difference = np.abs(len(series_vlaues) - len(t_values))
+        return series_vlaues[difference:]
 
 
 def standardize_series(
