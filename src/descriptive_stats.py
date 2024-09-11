@@ -14,8 +14,8 @@ import statsmodels.graphics.tsaplots
 import statsmodels.stats.diagnostic
 
 from constants import ids
-from src.helpers import add_real_value_columns, calculate_diff_in_log
-from src.logging_helpers import define_other_module_log_level
+from src.utils.helpers import add_real_value_columns, calculate_diff_in_log
+from src.utils.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 
 # * Logging settings
@@ -40,7 +40,7 @@ DESCRIPTIVE_STATS = [
 NORMALITY_TESTS = {"Jarque-Bera": stats.jarque_bera, "Shapiro-Wilk": stats.shapiro}
 PANDAS_METHODS = ["count", "mean", "std", "skewness", "kurtosis"]
 HYPOTHESIS_THRESHOLD = [0.1, 0.05, 0.001]
-LJUNG_BOX_LAGS = [15]
+LJUNG_BOX_LAGS = [40]
 
 
 def include_statistic(
@@ -92,7 +92,9 @@ def conduct_ljung_box(
     results_dict = {}
     cols_to_test = data.drop(date_column, axis=1).columns.to_list()
     for col in cols_to_test:
-        test_results = statsmodels.stats.diagnostic.acorr_ljungbox(data[col], lags=lags)
+        test_results = statsmodels.stats.diagnostic.acorr_ljungbox(
+            data[col].dropna(), lags=lags
+        )
         test_stat, p_value = (
             test_results["lb_stat"].iat[0],
             test_results["lb_pvalue"].iat[0],
@@ -269,7 +271,7 @@ def main() -> None:
     )
     print(us_corr)
 
-    _, axs = plt.subplots(5)
+    _, axs = plt.subplots(len(us_data.drop("date", axis=1).columns.to_list()))
     for ax, c in zip(axs, us_data.drop("date", axis=1).columns.to_list()):
         statsmodels.graphics.tsaplots.plot_acf(us_data[c], lags=36, ax=ax)
         ax.title.set_text(c)
