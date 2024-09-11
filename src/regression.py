@@ -15,8 +15,11 @@ import seaborn as sns
 import statsmodels.api as sm
 import statsmodels.iolib.summary2
 
+from constants import ids, results_configs
 from src import dwt
+from src.utils import helpers
 from src.utils.logging_helpers import define_other_module_log_level
+from src.utils.wavelet_helpers import align_series
 from src import retrieve_data
 
 # * Logging settings
@@ -101,14 +104,6 @@ def time_scale_regression(
     return results
 
 
-def align_series(t_values: npt.NDArray, series_vlaues: npt.NDArray) -> npt.NDArray:
-    """Aligns series lengths when they are not equal by removing the first value"""
-    if len(series_vlaues) != len(t_values):
-        logger.warning("Trimming series signal")
-        difference = np.abs(len(series_vlaues) - len(t_values))
-        return series_vlaues[difference:]
-
-
 def plot_compare_components(
     a_label: str,
     b_label: str,
@@ -149,44 +144,112 @@ def plot_compare_components(
                 components[l][c] = align_series(time, components[l][c])
             ax[l].plot(time, components[l][c], label=c)
             ax[l].set_title(rf"$D_{{{levels + 1 - l}}}$")
-    plt.legend(loc="upper left")
+    plt.legend(loc="upper left", frameon=False)
     return fig
 
 
 def main() -> None:
     """Run script"""
+    # * CPI
+    raw_data = retrieve_data.get_fed_data(ids.US_CPI)
+    cpi, _, _ = retrieve_data.clean_fed_data(raw_data)
+    cpi.rename(columns={"value": ids.CPI}, inplace=True)
+
+    # * Inflation rate
+    raw_data = retrieve_data.get_fed_data(ids.US_CPI, units="pc1", freq="m")
+    measured_inf, _, _ = retrieve_data.clean_fed_data(raw_data)
+    measured_inf.rename(columns={"value": ids.INFLATION}, inplace=True)
+
     # * Inflation expectations
-    raw_data = retrieve_data.get_fed_data("MICH", units="pc1")
+    raw_data = retrieve_data.get_fed_data(ids.US_INF_EXPECTATIONS)
     inf_exp, _, _ = retrieve_data.clean_fed_data(raw_data)
-    inf_exp.rename(columns={"value": "expectation"}, inplace=True)
-    print("Descriptive stats for inflation expectations")
-    print(inf_exp.describe())
+    inf_exp.rename(columns={"value": ids.EXPECTATIONS}, inplace=True)
 
     # * Non-durables consumption, monthly
-    raw_data = retrieve_data.get_fed_data("PCEND", units="pc1")
+    raw_data = retrieve_data.get_fed_data(ids.US_NONDURABLES_CONSUMPTION)
     nondur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
-    nondur_consump.rename(columns={"value": "nondurable"}, inplace=True)
-    print("Descriptive stats for personal non-durables consumption")
-    print(nondur_consump.describe())
+    nondur_consump.rename(columns={"value": ids.NONDURABLES}, inplace=True)
 
     # * Durables consumption, monthly
-    raw_data = retrieve_data.get_fed_data("PCEDG", units="pc1")
+    raw_data = retrieve_data.get_fed_data(ids.US_DURABLES_CONSUMPTION)
     dur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
-    dur_consump.rename(columns={"value": "durable"}, inplace=True)
-    print("Descriptive stats for personal durables consumption")
-    print(dur_consump.describe())
+    dur_consump.rename(columns={"value": ids.DURABLES}, inplace=True)
+
+    # * Non-durables consumption change, monthly
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_NONDURABLES_CONSUMPTION, units="pc1", freq="m"
+    )
+    nondur_consump_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+    nondur_consump_chg.rename(columns={"value": ids.NONDURABLES_CHG}, inplace=True)
+
+    # * Durables consumption change, monthly
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_DURABLES_CONSUMPTION, units="pc1", freq="m"
+    )
+    dur_consump_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+    dur_consump_chg.rename(columns={"value": ids.DURABLES_CHG}, inplace=True)
+
+    # * Personal savings
+    raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS)
+    save, _, _ = retrieve_data.clean_fed_data(raw_data)
+    save.rename(columns={"value": ids.SAVINGS}, inplace=True)
+
+    # * Personal savings change
+    raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS, units="pc1", freq="m")
+    save_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+    save_chg.rename(columns={"value": ids.SAVINGS_CHG}, inplace=True)
 
     # * Personal savings rate
-    raw_data = retrieve_data.get_fed_data("PSAVERT", units="pc1")
-    save, _, _ = retrieve_data.clean_fed_data(raw_data)
-    save.rename(columns={"value": "savings"}, inplace=True)
-    print("Descriptive stats for personal savings rate")
-    print(save.describe())
+    raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS_RATE)
+    save_rate, _, _ = retrieve_data.clean_fed_data(raw_data)
+    save_rate.rename(columns={"value": ids.SAVINGS_RATE}, inplace=True)
 
     # * Merge dataframes to align dates and remove extras
-    df = inf_exp.merge(nondur_consump, how="left")
-    df = df.merge(dur_consump, how="left")
-    df = df.merge(save, how="left")
+    dataframes = [
+        cpi,
+        measured_inf,
+        inf_exp,
+        nondur_consump,
+        nondur_consump_chg,
+        dur_consump,
+        dur_consump_chg,
+        save,
+        save_chg,
+        save_rate,
+    ]
+    us_data = helpers.combine_series(dataframes, on=[ids.DATE], how="left")
+
+    # # * Remove rows without data for all measures
+    us_data.dropna(inplace=True)
+
+    # * Add real value columns
+    logger.info(
+        "Using constant dollars from %s, CPI: %s",
+        results_configs.CONSTANT_DOLLAR_DATE,
+        us_data[
+            us_data[ids.DATE] == pd.Timestamp(results_configs.CONSTANT_DOLLAR_DATE)
+        ][ids.CPI].iat[0],
+    )
+    us_data = helpers.add_real_value_columns(
+        data=us_data,
+        nominal_columns=[ids.NONDURABLES, ids.DURABLES, ids.SAVINGS],
+        cpi_column=ids.CPI,
+        constant_date=results_configs.CONSTANT_DOLLAR_DATE,
+    )
+    df = helpers.calculate_diff_in_log(
+        data=us_data,
+        columns=[
+            ids.CPI,
+            ids.EXPECTATIONS,
+            ids.NONDURABLES,
+            ids.DURABLES,
+            ids.SAVINGS,
+            ids.REAL_NONDURABLES,
+            ids.REAL_DURABLES,
+            ids.REAL_SAVINGS,
+        ],
+    )
+
     print(
         f"""Inflation expectations observations: {len(inf_exp)}, \n
         Non-durables consumption observations: {len(nondur_consump)}, \n
@@ -197,16 +260,18 @@ def main() -> None:
     print("--------------------------Descriptive stats--------------------------\n")
     print(df.describe())
 
-    sns.pairplot(df, corner=True, kind="reg", plot_kws={"ci": None})
+    # sns.pairplot(df, corner=True, kind="reg", plot_kws={"ci": None})
 
     # * Wavelet decomposition
     t = df["date"].to_numpy()
 
     ## Create objects for DWT
-    exp_dwt = dwt.DataForDWT(df["expectation"].to_numpy(), MOTHER)
-    nondur_consump_dwt = dwt.DataForDWT(df["nondurable"].to_numpy(), MOTHER)
-    dur_consump_dwt = dwt.DataForDWT(df["durable"].to_numpy(), MOTHER)
-    save_dwt = dwt.DataForDWT(df["savings"].to_numpy(), MOTHER)
+    exp_dwt = dwt.DataForDWT(df[f"diff_log_{ids.EXPECTATIONS}"].to_numpy(), MOTHER)
+    nondur_consump_dwt = dwt.DataForDWT(
+        df[f"diff_log_{ids.NONDURABLES}"].to_numpy(), MOTHER
+    )
+    dur_consump_dwt = dwt.DataForDWT(df[f"diff_log_{ids.DURABLES}"].to_numpy(), MOTHER)
+    save_dwt = dwt.DataForDWT(df[f"diff_log_{ids.SAVINGS}"].to_numpy(), MOTHER)
 
     logger.debug("exp mother wavelet %s", type(exp_dwt.mother_wavelet))
     results_exp_dwt = dwt.run_dwt(exp_dwt)
@@ -217,50 +282,53 @@ def main() -> None:
     df_melt = pd.melt(df, ["date"])
     df_melt.rename(columns={"value": "%"}, inplace=True)
 
-    # * Plot log-by-log change amount frequency
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    sns.kdeplot(data=df_melt, x="%", hue="variable", ax=ax)
+    # # * Plot log-by-log change amount frequency
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111)
+    # ax.set_xscale("log")
+    # ax.set_yscale("log")
+    # sns.kdeplot(data=df_melt, x="%", hue="variable", ax=ax)
 
     # * Plot each series component separately
     _ = plot_compare_components(
-        "expectation",
-        "nondurable",
+        f"diff_log_{ids.EXPECTATIONS}",
+        f"diff_log_{ids.NONDURABLES}",
         results_exp_dwt.coeffs,
         results_nondur_consump_dwt.coeffs,
         t,
         results_exp_dwt.levels,
         MOTHER,
-        figsize=(15, 10),
+        figsize=(10, 15),
+        sharex=True,
     )
 
     _ = plot_compare_components(
-        "expectation",
-        "durable",
+        f"diff_log_{ids.EXPECTATIONS}",
+        f"diff_log_{ids.DURABLES}",
         results_exp_dwt.coeffs,
         results_dur_consump_dwt.coeffs,
         t,
         results_exp_dwt.levels,
         MOTHER,
-        figsize=(15, 10),
+        figsize=(10, 15),
+        sharex=True,
     )
 
     _ = plot_compare_components(
-        "expectation",
-        "savings",
+        f"diff_log_{ids.EXPECTATIONS}",
+        f"diff_log_{ids.SAVINGS}",
         results_exp_dwt.coeffs,
         results_save_dwt.coeffs,
         t,
         results_exp_dwt.levels,
         MOTHER,
-        figsize=(15, 10),
+        figsize=(10, 15),
+        sharex=True,
     )
 
-    # * Plot initial series
-    _, (bx) = plt.subplots(1, 1)
-    bx = sns.lineplot(data=df_melt, x="date", y="%", hue="variable", ax=bx)
+    # # * Plot initial series
+    # _, (bx) = plt.subplots(1, 1)
+    # bx = sns.lineplot(data=df_melt, x="date", y="%", hue="variable", ax=bx)
 
     plt.show()
 
