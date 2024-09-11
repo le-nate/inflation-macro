@@ -13,7 +13,9 @@ import numpy as np
 import numpy.typing as npt
 import pywt
 
-from src.logging_helpers import define_other_module_log_level
+from constants import ids
+from src.utils.logging_helpers import define_other_module_log_level
+from src.utils.wavelet_helpers import align_series
 from src import retrieve_data
 
 # * Logging settings
@@ -47,6 +49,29 @@ class ResultsFromDWT:
     smoothed_signal_dict: Dict[int, Dict[str, npt.NDArray]] = field(
         default_factory=dict
     )
+
+    def smooth_signal(
+        self, y_values: npt.NDArray, mother_wavelet: Type
+    ) -> Dict[int, Dict[str, npt.NDArray]]:
+        """Generate smoothed signals based off wavelet coefficients for each pre-defined level"""
+        ## Initialize dict for reconstructed signals
+        signals_dict = {}
+
+        ## Loop through levels and remove detail level component(s)
+        # ! Note: signal_dict[l] provides the signal with levels <= l removed
+        logger.debug(self.levels)
+        for l in range(self.levels, 0, -1):
+            print(f"s_{l} stored with key {l}")
+            smooth_coeffs = self.coeffs.copy()
+            signals_dict[l] = {}
+            ## Set remaining detail coefficients to zero
+            for coeff in range(1, l + 1):
+                smooth_coeffs[-1 * coeff] = np.zeros_like(smooth_coeffs[-1 * coeff])
+            signals_dict[l]["coeffs"] = smooth_coeffs
+            # Reconstruct the signal using only the approximation coefficients
+            reconst = pywt.waverec(smooth_coeffs, mother_wavelet)
+            signals_dict[l]["signal"] = trim_signal(y_values, reconst)
+        self.smoothed_signal_dict = signals_dict
 
 
 def trim_signal(
@@ -83,33 +108,6 @@ def run_dwt(dwt_data: Type[DataForDWT]) -> Type[ResultsFromDWT]:
     return ResultsFromDWT(dwt_coeffs, dwt_levels)
 
 
-def smooth_signal(
-    dwt_data: Type[DataForDWT],
-) -> Type[ResultsFromDWT]:
-    """Generate smoothed signals based off wavelet coefficients for each pre-defined level"""
-    ## Initialize dict for reconstructed signals
-    signals_dict = {}
-
-    dwt_results = run_dwt(dwt_data)
-
-    ## Loop through levels and remove detail level component(s)
-    # ! Note: signal_dict[l] provides the signal with levels <= l removed
-    logger.debug(dwt_results.levels)
-    for l in range(dwt_results.levels, 0, -1):
-        print(f"s_{l} stored with key {l}")
-        smooth_coeffs = dwt_results.coeffs.copy()
-        signals_dict[l] = {}
-        ## Set remaining detail coefficients to zero
-        for coeff in range(1, l + 1):
-            smooth_coeffs[-1 * coeff] = np.zeros_like(smooth_coeffs[-1 * coeff])
-        signals_dict[l]["coeffs"] = smooth_coeffs
-        # Reconstruct the signal using only the approximation coefficients
-        reconst = pywt.waverec(smooth_coeffs, dwt_data.mother_wavelet)
-        signals_dict[l]["signal"] = trim_signal(dwt_data.y_values, reconst)
-    dwt_results.smoothed_signal_dict = signals_dict
-    return dwt_results
-
-
 def reconstruct_signal_component(
     signal_coeffs: list, wavelet: str, level: int
 ) -> tuple[dict, int]:
@@ -123,6 +121,42 @@ def reconstruct_signal_component(
     return pywt.waverec(component_coeffs, wavelet)
 
 
+def plot_components(
+    label: str,
+    coeffs: npt.NDArray,
+    time: npt.NDArray,
+    levels: int,
+    wavelet: str,
+    **kwargs,
+) -> matplotlib.figure.Figure:
+    """Plot each series component separately"""
+    fig, ax = plt.subplots(levels + 1, 1, **kwargs)
+    smooth_component = reconstruct_signal_component(coeffs, wavelet, 0)
+    logger.warning(
+        "lengths x: %s, t: %s",
+        len(smooth_component),
+        len(time),
+    )
+
+    # * Align array legnths
+    if len(smooth_component) != len(time):
+        smooth_component = align_series(time, smooth_component)
+
+    ax[0].plot(time, smooth_component, label=label)
+    ax[0].set_title(rf"$S_{{{levels}}}$", size=15)
+
+    components = {}
+    for l in range(1, levels + 1):
+        components[l] = {}
+        components[l][label] = reconstruct_signal_component(coeffs, wavelet, l)
+        if len(time) != len(components[l][label]):
+            components[l][label] = align_series(time, components[l][label])
+        ax[l].plot(time, components[l][label], label=label)
+        ax[l].set_title(rf"$D_{{{levels + 1 - l}}}$", size=15)
+    plt.legend(loc="upper left")
+    return fig
+
+
 def plot_smoothing(
     smooth_signals: dict,
     original_t: npt.NDArray,
@@ -131,13 +165,7 @@ def plot_smoothing(
     **kwargs,
 ) -> Tuple[matplotlib.figure.Figure, str]:
     """Graph series of smoothed signals with original signal"""
-
-    # * Input name of time series
-    name = input("Enter name of time series (to be included in plot)")
-    while isinstance(name, str) is False:
-        input("Please enter a name as text")
-
-    fig = plt.figure(figsize=kwargs["figsize"])
+    fig = plt.figure(**kwargs)
     # * Loop through levels and add detail level components
     if ascending:
         order = reversed(list(smooth_signals.items()))
@@ -149,34 +177,43 @@ def plot_smoothing(
         plt.subplot(len(smooth_signals), 1, i)
         plt.plot(original_t, original_y, label="Actual")
         plt.plot(original_t, signal["signal"])
-        plt.xlabel("Year")
-        plt.grid()
-        plt.title(rf"Approximation: $S_{{j-{smooth_level}}}$")
+        plt.title(rf"Approximation: $S_{{j-{smooth_level}}}$", size=15)
         if i == 1:
             plt.legend()
-    return fig, name
+    return fig
 
 
 def main() -> None:
     """Run script"""
 
-    raw_data = retrieve_data.get_insee_data("000857180")
-    _, t, y = retrieve_data.clean_insee_data(raw_data)
+    raw_data = retrieve_data.get_fed_data(ids.US_INF_EXPECTATIONS)
+    _, t, y = retrieve_data.clean_fed_data(raw_data)
 
     # * Create instance of DataForDWT class
     data_for_dwt = DataForDWT(y, MOTHER)
 
     # * Apply DWT and smooth signal
-    results_from_dwt = smooth_signal(data_for_dwt)
-
-    fig, fig_title = plot_smoothing(
-        results_from_dwt.smoothed_signal_dict, t, y, figsize=(10, 10)
+    results_from_dwt = run_dwt(data_for_dwt)
+    results_from_dwt.smooth_signal(
+        y_values=data_for_dwt.y_values, mother_wavelet=data_for_dwt.mother_wavelet
     )
 
-    plt.xlabel("Year")
-    plt.ylabel(f"{fig_title.capitalize()}")
-    fig.suptitle(f"Wavelet smoothing of {fig_title.lower()}")
+    fig = plot_smoothing(results_from_dwt.smoothed_signal_dict, t, y, figsize=(10, 10))
+
+    plt.xlabel("Year", size=15)
     fig.tight_layout()
+    plt.show()
+
+    fig2 = plot_components(
+        label=ids.EXPECTATIONS,
+        coeffs=results_from_dwt.coeffs,
+        time=t,
+        levels=results_from_dwt.levels,
+        wavelet=MOTHER,
+        figsize=(10, 10),
+        sharex=True,
+    )
+    plt.legend("", frameon=False)
     plt.show()
 
 

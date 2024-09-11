@@ -6,7 +6,7 @@ import sys
 
 import numpy as np
 
-from src.logging_helpers import define_other_module_log_level
+from src.utils.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 from src import wavelet_helpers
 from src import xwt
@@ -34,8 +34,8 @@ y1 = dfcombo["value_1"].to_numpy()
 y2 = dfcombo["value_2"].to_numpy()
 t_test1 = np.linspace(1, y1.size + 1, y1.size)
 t_test2 = np.linspace(1, y2.size + 1, y2.size)
-y1 = wavelet_helpers.standardize_data_for_xwt(y1, detrend=False, remove_mean=True)
-y2 = wavelet_helpers.standardize_data_for_xwt(y2, detrend=False, remove_mean=True)
+y1 = wavelet_helpers.standardize_series(y1, detrend=False, remove_mean=True)
+y2 = wavelet_helpers.standardize_series(y2, detrend=False, remove_mean=True)
 
 
 logger.info("Testing DataForXWT class initialization")

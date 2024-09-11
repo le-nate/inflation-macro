@@ -1,5 +1,6 @@
 """Cross-project helper functions"""
 
+from functools import reduce
 from typing import Dict, Generator, List
 
 import numpy as np
@@ -67,3 +68,19 @@ def calculate_diff_in_log(
             col_name = col
         data[col_name] = 100 * np.log(data[col]).diff()
     return data
+
+
+def combine_series(dataframes: List[pd.DataFrame], **kwargs) -> pd.DataFrame:
+    """Merge dataframes from a list
+
+    Args:
+        dataframes List[pd.DataFrame]: List of dataframes to merge
+
+    Kwargs:
+        on List[str]: Column(s) to merge on
+        how {str}: 'left', 'right', 'inner', 'outer'
+
+    Returns:
+        pd.DataFrame: Combined dataframe
+    """
+    return reduce(lambda left, right: pd.merge(left, right, **kwargs), dataframes)

@@ -1,14 +1,35 @@
 """Helper functions for wavelet transforms"""
 
+import logging
+import sys
 from typing import List
 
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
 
+from src.utils.logging_helpers import define_other_module_log_level
 
-def standardize_data_for_xwt(
-    s: npt.NDArray, detrend: bool = True, standardize=True, remove_mean: bool = False
+# * Logging settings
+logger = logging.getLogger(__name__)
+define_other_module_log_level("Error")
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
+
+
+def align_series(t_values: npt.NDArray, series_vlaues: npt.NDArray) -> npt.NDArray:
+    """Aligns series lengths when they are not equal by removing the first value"""
+    if len(series_vlaues) != len(t_values):
+        logger.warning("Trimming series signal")
+        difference = np.abs(len(series_vlaues) - len(t_values))
+        return series_vlaues[difference:]
+
+
+def standardize_series(
+    series: npt.NDArray,
+    detrend: bool = True,
+    standardize: bool = True,
+    remove_mean: bool = False,
 ) -> npt.NDArray:
     """
     Helper function for pre-processing data, specifically for wavelet analysis
@@ -16,8 +37,8 @@ def standardize_data_for_xwt(
     """
 
     # Derive the variance prior to any detrending
-    std = s.std()
-    smean = s.mean()
+    std = series.std()
+    smean = series.mean()
 
     if detrend and remove_mean:
         raise ValueError(
@@ -26,11 +47,11 @@ def standardize_data_for_xwt(
 
     # Remove the trend if requested
     if detrend:
-        arbitrary_x = np.arange(0, s.size)
-        p = np.polyfit(arbitrary_x, s, 1)
-        snorm = s - np.polyval(p, arbitrary_x)
+        arbitrary_x = np.arange(0, series.size)
+        p = np.polyfit(arbitrary_x, series, 1)
+        snorm = series - np.polyval(p, arbitrary_x)
     else:
-        snorm = s
+        snorm = series
 
     if remove_mean:
         snorm = snorm - smean
