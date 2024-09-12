@@ -5,6 +5,7 @@ based off: https://pycwt.reaDThedocs.io/en/latest/tutorial.html
 
 from __future__ import division
 import logging
+from pathlib import Path
 import sys
 from dataclasses import dataclass, field
 
@@ -180,7 +181,7 @@ def plot_cwt(
         np.ceil(np.log2(cwt_results.period.max())),
     )
     cwt_ax.set_yticks(np.log2(y_ticks))
-    cwt_ax.set_yticklabels(y_ticks)
+    cwt_ax.set_yticklabels(y_ticks, size=15)
 
 
 def main() -> None:
@@ -220,9 +221,14 @@ def main() -> None:
     plot_cwt(ax, data_for_cwt, results_from_cwt, **cwt_plot_props)
 
     # * Set labels/title
-    ax.set_xlabel("", size=15)
-    ax.set_ylabel("Period (years)", size=15)
-    ax.set_title(LABEL, size=15)
+    ax.set_xlabel("", size=20)
+    ax.set_ylabel("Period (years)", size=20)
+    ax.set_title(LABEL, size=20)
+
+    # * Export plot
+    parent_dir = Path(__file__).parents[1]
+    export_file = parent_dir / "results" / f"CWT_{LABEL}.png"
+    plt.savefig(export_file, bbox_inches="tight")
 
     plt.show()
 
