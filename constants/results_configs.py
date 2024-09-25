@@ -3,6 +3,8 @@
 import pywt
 import pycwt as wavelet
 
+END_DATE = "2024-08-31"
+
 # * Define constant currency years
 CONSTANT_DOLLAR_DATE = "2017-12-01"
 

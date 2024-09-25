@@ -72,56 +72,76 @@ SERIES_COMPARISONS = [
 
 #  %%
 # * CPI
-raw_data = retrieve_data.get_fed_data(ids.US_CPI)
+raw_data = retrieve_data.get_fed_data(ids.US_CPI, realtime_end=results_configs.END_DATE)
 cpi, _, _ = retrieve_data.clean_fed_data(raw_data)
 cpi.rename(columns={"value": ids.CPI}, inplace=True)
 
 # * Inflation rate
-raw_data = retrieve_data.get_fed_data(ids.US_CPI, units="pc1", freq="m")
+raw_data = retrieve_data.get_fed_data(
+    ids.US_CPI, units="pc1", freq="m", realtime_end=results_configs.END_DATE
+)
 measured_inf, _, _ = retrieve_data.clean_fed_data(raw_data)
 measured_inf.rename(columns={"value": ids.INFLATION}, inplace=True)
 
 # * Inflation expectations
-raw_data = retrieve_data.get_fed_data(ids.US_INF_EXPECTATIONS)
+raw_data = retrieve_data.get_fed_data(
+    ids.US_INF_EXPECTATIONS, realtime_end=results_configs.END_DATE
+)
 inf_exp, _, _ = retrieve_data.clean_fed_data(raw_data)
 inf_exp.rename(columns={"value": ids.EXPECTATIONS}, inplace=True)
 
 # * Non-durables consumption, monthly
-raw_data = retrieve_data.get_fed_data(ids.US_NONDURABLES_CONSUMPTION)
+raw_data = retrieve_data.get_fed_data(
+    ids.US_NONDURABLES_CONSUMPTION, realtime_end=results_configs.END_DATE
+)
 nondur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
 nondur_consump.rename(columns={"value": ids.NONDURABLES}, inplace=True)
 
 # * Durables consumption, monthly
-raw_data = retrieve_data.get_fed_data(ids.US_DURABLES_CONSUMPTION)
+raw_data = retrieve_data.get_fed_data(
+    ids.US_DURABLES_CONSUMPTION, realtime_end=results_configs.END_DATE
+)
 dur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
 dur_consump.rename(columns={"value": ids.DURABLES}, inplace=True)
 
 # * Non-durables consumption change, monthly
 raw_data = retrieve_data.get_fed_data(
-    ids.US_NONDURABLES_CONSUMPTION, units="pc1", freq="m"
+    ids.US_NONDURABLES_CONSUMPTION,
+    units="pc1",
+    freq="m",
+    realtime_end=results_configs.END_DATE,
 )
 nondur_consump_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
 nondur_consump_chg.rename(columns={"value": ids.NONDURABLES_CHG}, inplace=True)
 
 # * Durables consumption change, monthly
 raw_data = retrieve_data.get_fed_data(
-    ids.US_DURABLES_CONSUMPTION, units="pc1", freq="m"
+    ids.US_DURABLES_CONSUMPTION,
+    units="pc1",
+    freq="m",
+    realtime_end=results_configs.END_DATE,
 )
 dur_consump_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
 dur_consump_chg.rename(columns={"value": ids.DURABLES_CHG}, inplace=True)
 
 # * Personal savings
-raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS)
+raw_data = retrieve_data.get_fed_data(
+    ids.US_SAVINGS, realtime_end=results_configs.END_DATE
+)
 save, _, _ = retrieve_data.clean_fed_data(raw_data)
 save.rename(columns={"value": ids.SAVINGS}, inplace=True)
 
 # * Personal savings change
-raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS, units="pc1", freq="m")
+raw_data = retrieve_data.get_fed_data(
+    ids.US_SAVINGS, units="pc1", freq="m", realtime_end=results_configs.END_DATE
+)
 save_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
 save_chg.rename(columns={"value": ids.SAVINGS_CHG}, inplace=True)
 
 # * Personal savings rate
-raw_data = retrieve_data.get_fed_data(ids.US_SAVINGS_RATE)
+raw_data = retrieve_data.get_fed_data(
+    ids.US_SAVINGS_RATE, realtime_end=results_configs.END_DATE
+)
 save_rate, _, _ = retrieve_data.clean_fed_data(raw_data)
 save_rate.rename(columns={"value": ids.SAVINGS_RATE}, inplace=True)
 
