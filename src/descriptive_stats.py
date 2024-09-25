@@ -55,10 +55,13 @@ def include_statistic(
 
 
 def add_p_value_stars(
-    test_statistic: Union[int, float], p_value: float, hypothesis_threshold: List[float]
+    test_statistic: Union[int, float],
+    p_value: float,
+    hypothesis_threshold: List[float],
+    decimals_places: int = 2,
 ) -> str:
     """Add stars (*) for each p value threshold that the test statistic falls below"""
-    star_test_statistic = str(test_statistic)
+    star_test_statistic = str(f"%.{decimals_places}f" % test_statistic)
     for p_threshold in sorted(hypothesis_threshold):
         star_test_statistic += "*" if p_value <= p_threshold else ""
     return star_test_statistic

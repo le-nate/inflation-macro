@@ -38,6 +38,11 @@ define_other_module_log_level("Error")
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
+# * Rounding settings
+pd.set_option(
+    "display.float_format", lambda x: f"%.{results_configs.DECIMAL_PLACES}f" % x
+)
+
 SERIES_COMPARISONS = [
     (ids.DIFF_LOG_CPI, ids.EXPECTATIONS),
     (ids.EXPECTATIONS, ids.NONDURABLES_CHG),
@@ -274,7 +279,7 @@ descriptive_statistics_results
 us_corr = descriptive_stats.correlation_matrix_pvalues(
     data=us_data[[c for c in us_data.columns if "log" in c]],
     hypothesis_threshold=results_configs.HYPOTHESIS_THRESHOLD,
-    decimals=2,
+    decimals=results_configs.DECIMAL_PLACES,
     display=False,
     export_table=False,
 )

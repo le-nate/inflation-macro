@@ -6,6 +6,8 @@ import pycwt as wavelet
 # * Define constant currency years
 CONSTANT_DOLLAR_DATE = "2017-12-01"
 
+DECIMAL_PLACES = 2
+
 # * Define statistical tests to run on data
 STATISTICS_TESTS = [
     "count",
