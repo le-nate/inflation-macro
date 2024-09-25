@@ -270,22 +270,6 @@ dx.legend(loc="upper center", frameon=False)
 # plt.title("Real consumption levels, United States (2017 dollars)")
 
 # %% [markdown]
-##### Figure 3 - Distribution of Inflation Expectations, Nondurables Consumption,
-##### Durables Consumption, and Savings (US)
-# %%
-plot_columns = [
-    ids.DIFF_LOG_CPI,
-    ids.DIFF_LOG_EXPECTATIONS,
-    ids.DIFF_LOG_NONDURABLES,
-    ids.DIFF_LOG_DURABLES,
-    ids.DIFF_LOG_SAVINGS,
-    ids.DIFF_LOG_REAL_NONDURABLES,
-    ids.DIFF_LOG_REAL_DURABLES,
-    ids.DIFF_LOG_REAL_SAVINGS,
-]
-sns.pairplot(us_data[plot_columns], corner=True, kind="reg", plot_kws={"ci": None})
-
-# %% [markdown]
 ##### Table 1: Descriptive statistics
 # %%
 descriptive_statistics_results = descriptive_stats.generate_descriptive_statistics(
