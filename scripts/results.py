@@ -217,7 +217,7 @@ inf_data.dropna(inplace=True)
 inf_data.columns = [
     "Date",
     "Expectations",
-    "Measured",
+    "CPI inflation",
     "Nondurables (% chg)",
     "Durables (% chg)",
     "Savings (%)",
@@ -228,11 +228,11 @@ inf_melt = pd.melt(inf_data, ["Date"])
 inf_melt.rename(columns={"value": "%"}, inplace=True)
 
 # %% [markdown]
-##### Figure XX - Time series: Measured Inflation
+##### Figure 4 - Time series: Measured Inflation
 _, (ax, bx, cx, dx) = plt.subplots(4, 1, sharex=True, figsize=(10, 9))
 
 # * Inflation x expectations
-measures_to_plot = ["Expectations", "Measured"]
+measures_to_plot = ["Expectations", "CPI inflation"]
 data = inf_melt[inf_melt["variable"].isin(measures_to_plot)]
 ax = sns.lineplot(data=data, x="Date", y="%", hue="variable", ax=ax)
 ax.legend().set_title(None)
@@ -259,66 +259,42 @@ dx = sns.lineplot(data=data, x="Date", y="%", hue="variable", ax=dx)
 dx.legend().set_title(None)
 dx.legend(loc="upper center", frameon=False)
 
-# # %%[markdown]
-# ## Table 1 Descriptive statistics
-
-# # %%
-# usa_melt = pd.melt(us_data, [ids.DATE])
-# usa_melt.rename(columns={"value": "Billions ($)"}, inplace=True)
-
-# # %% [markdown]
-# ##### Figure 2 - Time series: Inflation Expectations, Nondurables Consumption,
-# ##### Durables Consumption, and Savings (US)
-# # %%
-# _, (bx) = plt.subplots(1, 1)
-# measures_to_plot = [ids.NONDURABLES, ids.DURABLES]
-# data = usa_melt[usa_melt["variable"].isin(measures_to_plot)]
-# bx = sns.lineplot(data=data, x=ids.DATE, y="Billions ($)", hue="variable", ax=bx)
-# plt.title("Real consumption levels, United States (2017 dollars)")
+## Save plot
+# parent_dir = Path(__file__).parents[1]
+# export_file = parent_dir / "results" / f"time_series_plots.png"
+# plt.savefig(export_file, bbox_inches="tight")
 
 # %% [markdown]
 ##### Table 1: Descriptive statistics
 # %%
 descriptive_statistics_results = descriptive_stats.generate_descriptive_statistics(
-    us_data, results_configs.STATISTICS_TESTS, export_table=False
+    us_data[
+        [
+            ids.DATE,
+            ids.DIFF_LOG_CPI,
+            # ids.EXPECTATIONS,
+            ids.DIFF_LOG_EXPECTATIONS,
+            ids.DIFF_LOG_NONDURABLES,
+            ids.DIFF_LOG_DURABLES,
+            ids.DIFF_LOG_SAVINGS,
+        ]
+    ].dropna(),
+    results_configs.STATISTICS_TESTS,
+    export_table=True,
 )
 descriptive_statistics_results
 
 # %% [markdown]
-##### Table XX: Correlation matrix
+##### Table 2: Correlation matrix
 # %%
 us_corr = descriptive_stats.correlation_matrix_pvalues(
     data=us_data[[c for c in us_data.columns if "log" in c]],
     hypothesis_threshold=results_configs.HYPOTHESIS_THRESHOLD,
     decimals=results_configs.DECIMAL_PLACES,
     display=False,
-    export_table=False,
+    export_table=True,
 )
 us_corr
-
-# # %% [markdown]
-# ##### Figure XX - Time series: Inflation Expectations, Food Consumption,
-# ##### Durables Consumption (France)
-# # %%
-# fr_melt = pd.melt(fr_data, [ids.DATE])
-# fr_melt.rename(columns={"value": "Billions (€)"}, inplace=True)
-
-# fig, (ax, bx) = plt.subplots(1, 2)
-# measures_to_plot = ["food", "durables"]
-# data = fr_melt[fr_melt["variable"].isin(measures_to_plot)]
-# ax = sns.lineplot(data=data, x=ids.DATE, y="Billions (€)", hue="variable", ax=ax)
-# plt.title("Consumption levels, France")
-
-# # %% [markdown]
-# ##### Figure XX - Distribution of Inflation Expectations, Nondurables Consumption,
-# ##### Durables Consumption (France)
-# # %%
-# sns.pairplot(fr_data, corner=True, kind="reg", plot_kws={"ci": None})
-
-# # %% [markdown]
-# ##### Table 1: Descriptive statistics
-# # %%
-# fr_data.describe()
 
 # %% [markdown]
 ## 3.2) Exploratory analysis
