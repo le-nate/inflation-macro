@@ -387,25 +387,28 @@ for comp in SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[14:17]:
 
 # %% [markdown]
 ### 3.2.2) Individual time series: Continuous wavelet transforms
-cwt_measures = [
-    # ids.INFLATION,
-    ids.EXPECTATIONS,
-    ids.SAVINGS_RATE,
-    # ids.NONDURABLES,
-    # ids.DURABLES,
-    ids.NONDURABLES_CHG,
-    ids.DURABLES_CHG,
-    ids.SAVINGS_CHG,
-    # ids.SAVINGS,
-    # ids.REAL_NONDURABLES,
-    # ids.REAL_DURABLES,
-    # ids.REAL_SAVINGS,
-    ids.DIFF_LOG_CPI,
-    ids.DIFF_LOG_EXPECTATIONS,
-    ids.DIFF_LOG_REAL_NONDURABLES,
-    ids.DIFF_LOG_REAL_DURABLES,
-    ids.DIFF_LOG_REAL_SAVINGS,
-]
+cwt_measures = {
+    # ids.INFLATION: "CPI inflation",
+    ids.EXPECTATIONS: "Inflation expectations",
+    ids.SAVINGS_RATE: "Savings rate",
+    ids.NONDURABLES_CHG: "Nondurables consumption (% chg)",
+    ids.DURABLES_CHG: "Durables consumption (% chg)",
+    ids.SAVINGS_CHG: "Savings (% chg)",
+    ids.DIFF_LOG_CPI: "CPI inflation (diff in log)",
+    ids.DIFF_LOG_EXPECTATIONS: "Inflation expectations (diff in log)",
+    ids.DIFF_LOG_NONDURABLES: "Nondurables consumption (diff in log)",
+    ids.DIFF_LOG_DURABLES: "Durables consumption (diff in log)",
+    ids.DIFF_LOG_SAVINGS: "Savings (diff in log)",
+    ids.DIFF_LOG_REAL_NONDURABLES: "Real nondurables consumption (diff in log)",
+    ids.DIFF_LOG_REAL_DURABLES: "Real durables consumption (diff in log)",
+    ids.DIFF_LOG_REAL_SAVINGS: "Real savings (diff in log)",
+    # # # # ids.NONDURABLES,
+    # # # # ids.DURABLES,
+    # # # ids.SAVINGS,
+    # # # ids.REAL_NONDURABLES,
+    # # # ids.REAL_DURABLES,
+    # # # ids.REAL_SAVINGS,
+}
 cwt_dict = create_cwt_dict(
     us_data.dropna(),
     cwt_measures,
@@ -416,25 +419,33 @@ cwt_dict = create_cwt_dict(
     levels=results_configs.LEVELS,
 )
 
-cwt_results_dict = create_cwt_results_dict(cwt_dict, cwt_measures, normalize=True)
+cwt_results_dict = create_cwt_results_dict(
+    cwt_dict, cwt_measures.keys(), normalize=True
+)
 
 # %%
 # * Plot CWTs
 plt.close("all")
-_, axs = plt.subplots(len(cwt_results_dict), **results_configs.CWT_FIG_PROPS)
+# _, axs = plt.subplots(len(cwt_results_dict), **results_configs.CWT_FIG_PROPS)
 
-for i, m in enumerate(cwt_results_dict):
+for measure, cwt_result in cwt_results_dict.items():
+    fig, ax = plt.subplots(1, **results_configs.CWT_FIG_PROPS)
     cwt.plot_cwt(
-        axs[i],
-        cwt_dict[m],
-        cwt_results_dict[m],
+        ax,
+        cwt_dict[measure],
+        cwt_result,
         **results_configs.CWT_PLOT_PROPS,
     )
 
     # * Set labels/title
-    axs[i].set_xlabel("")
-    axs[i].set_ylabel("Period (years)")
-    axs[i].set_title(m)
+    ax.set_xlabel("")
+    ax.set_ylabel("Period (years)")
+    ax.set_title(cwt_measures[measure])
+
+    # ! Export figures to file
+    # parent_dir = Path(__file__).parents[1]
+    # export_file = parent_dir / "results" / f"cwt_{measure}.png"
+    # plt.savefig(export_file, bbox_inches="tight")
 
 plt.show()
 
