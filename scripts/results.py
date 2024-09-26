@@ -47,7 +47,7 @@ SERIES_COMPARISONS = [
     (ids.DIFF_LOG_CPI, ids.EXPECTATIONS),
     (ids.EXPECTATIONS, ids.NONDURABLES_CHG),
     (ids.EXPECTATIONS, ids.DURABLES_CHG),
-    (ids.EXPECTATIONS, ids.SAVINGS_CHG),
+    (ids.EXPECTATIONS, ids.SAVINGS_RATE),
     (ids.DIFF_LOG_CPI, ids.DIFF_LOG_EXPECTATIONS),
     (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_NONDURABLES),
     (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_DURABLES),
@@ -309,7 +309,7 @@ dwt_measures = [
     ids.EXPECTATIONS,
     ids.NONDURABLES_CHG,
     ids.DURABLES_CHG,
-    ids.SAVINGS_CHG,
+    ids.SAVINGS_RATE,
     ids.DIFF_LOG_CPI,
     ids.DIFF_LOG_EXPECTATIONS,
     ids.DIFF_LOG_NONDURABLES,
@@ -330,22 +330,46 @@ dwt_results_dict = create_dwt_results_dict(dwt_dict, dwt_measures)
 t = us_data.dropna()[ids.DATE].to_numpy()
 
 # %% [markdown]
-## Figure XX - Time scale decomposition of expectations
+## Figure 5 - Frequency decomposition of expectations
 fig = dwt.plot_components(
     label=ids.EXPECTATIONS,
     coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
     time=t,
     levels=dwt_results_dict[ids.EXPECTATIONS].levels,
     wavelet=results_configs.DWT_MOTHER_WAVELET,
-    figsize=(15, 10),
+    figsize=(15, 20),
     sharex=True,
 )
 plt.legend("", frameon=False)
+# parent_dir = Path(__file__).parents[1]
+# export_file = parent_dir / "results" / "expectations_decomposition.png"
+# plt.savefig(export_file, bbox_inches="tight")
 
 # %% [markdown]
-## Figure 4 - Time scale decomposition of expectations and nondurables consumption (US)
+## Figure 6 - Smoothing of expectations
+dwt_results_dict[ids.EXPECTATIONS].smooth_signal(
+    y_values=dwt_dict[ids.EXPECTATIONS].y_values,
+    mother_wavelet=dwt_dict[ids.EXPECTATIONS].mother_wavelet,
+)
+
+fig = dwt.plot_smoothing(
+    dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
+    t,
+    dwt_dict[ids.EXPECTATIONS].y_values,
+    ascending=True,
+    figsize=(15, 20),
+    sharex=True,
+)
+
+# plt.legend("", frameon=False)
+# parent_dir = Path(__file__).parents[1]
+# export_file = parent_dir / "results" / "expectations_smoothing.png"
+# plt.savefig(export_file, bbox_inches="tight")
+
+# %% [markdown]
+## Figure 6 - Frequency decomposition of expectations and nondurables consumption (US)
 # * Plot comparison decompositions of expectations and other measure
-for comp in SERIES_COMPARISONS[14:17]:
+for comp in SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[14:17]:
     fig = regression.plot_compare_components(
         a_label=comp[0],
         b_label=comp[1],
@@ -357,9 +381,9 @@ for comp in SERIES_COMPARISONS[14:17]:
         figsize=(10, 15),
         sharex=True,
     )
-    parent_dir = Path(__file__).parents[1]
-    export_file = parent_dir / "results" / f"{comp[0]}_{comp[1]}.png"
-    plt.savefig(export_file, bbox_inches="tight")
+    # parent_dir = Path(__file__).parents[1]
+    # export_file = parent_dir / "results" / f"decomposition_{comp[0]}_{comp[1]}.png"
+    # plt.savefig(export_file, bbox_inches="tight")
 
 # %% [markdown]
 ### 3.2.2) Individual time series: Continuous wavelet transforms

@@ -25,7 +25,7 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 # * Constants
-MOTHER = pywt.Wavelet("sym12")
+MOTHER = pywt.Wavelet("db4")
 
 
 @dataclass
@@ -165,21 +165,24 @@ def plot_smoothing(
     **kwargs,
 ) -> Tuple[matplotlib.figure.Figure, str]:
     """Graph series of smoothed signals with original signal"""
-    fig = plt.figure(**kwargs)
+    fig, axs = plt.subplots(len(smooth_signals), 1, **kwargs)
     # * Loop through levels and add detail level components
     if ascending:
         order = reversed(list(smooth_signals.items()))
     else:
         order = list(smooth_signals.items())
     for i, (level, signal) in enumerate(order, 1):
+        logger.debug(i)
         smooth_level = len(smooth_signals) - level
         ## Subplot for each smooth signal
-        plt.subplot(len(smooth_signals), 1, i)
-        plt.plot(original_t, original_y, label="Actual")
-        plt.plot(original_t, signal["signal"])
-        plt.title(rf"Approximation: $S_{{j-{smooth_level}}}$", size=15)
-        if i == 1:
-            plt.legend()
+        # plt.subplot(len(smooth_signals), 1, i)
+        axs[i - 1].plot(original_t, original_y, label="Original")
+        axs[i - 1].plot(original_t, signal["signal"])
+        axs[i - 1].set_title(rf"Approximation: $S_{{j-{smooth_level}}}$", size=15)
+        if i - 1 == 0:
+            axs[i - 1].legend(loc="upper right")
+        else:
+            axs[i - 1].legend("", frameon=False)
     return fig
 
 
@@ -198,9 +201,16 @@ def main() -> None:
         y_values=data_for_dwt.y_values, mother_wavelet=data_for_dwt.mother_wavelet
     )
 
-    fig = plot_smoothing(results_from_dwt.smoothed_signal_dict, t, y, figsize=(10, 10))
+    fig = plot_smoothing(
+        smooth_signals=results_from_dwt.smoothed_signal_dict,
+        original_t=t,
+        original_y=y,
+        figsize=(10, 10),
+        sharex=True,
+    )
 
     plt.xlabel("Year", size=15)
+    plt.ylabel("%", size=15)
     fig.tight_layout()
     plt.show()
 
