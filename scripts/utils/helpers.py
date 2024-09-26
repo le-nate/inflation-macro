@@ -43,10 +43,10 @@ def create_cwt_dict(
     transform_dict = {}
     for measure in measures_list:
         t_values = data_for_cwt[data_for_cwt[measure].notna()][ids.DATE].to_numpy()
+        y_values = data_for_cwt[data_for_cwt[measure].notna()][measure].to_numpy()
+        y_values = wavelet_helpers.standardize_series(y_values)
         transform_dict[measure] = cwt.DataForCWT(
-            t_values=t_values,
-            y_values=data_for_cwt[data_for_cwt[measure].notna()][measure].to_numpy(),
-            **kwargs,
+            t_values=t_values, y_values=y_values, **kwargs
         )
     return transform_dict
 

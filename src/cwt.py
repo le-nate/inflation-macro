@@ -186,6 +186,28 @@ def plot_cwt(
 
 def main() -> None:
     """Run script"""
+    cwt_measures = {
+        ids.INFLATION: "CPI inflation",
+        ids.EXPECTATIONS: "Inflation expectations",
+        ids.SAVINGS_RATE: "Savings rate",
+        ids.NONDURABLES_CHG: "Nondurables consumption (% chg)",
+        ids.DURABLES_CHG: "Durables consumption (% chg)",
+        ids.SAVINGS_CHG: "Savings (% chg)",
+        ids.DIFF_LOG_CPI: "CPI inflation (diff in log)",
+        ids.DIFF_LOG_EXPECTATIONS: "Inflation expectations (diff in log)",
+        ids.DIFF_LOG_NONDURABLES: "Nondurables consumption (diff in log)",
+        ids.DIFF_LOG_DURABLES: "Durables consumption (diff in log)",
+        ids.DIFF_LOG_SAVINGS: "Savings (diff in log)",
+        ids.DIFF_LOG_REAL_NONDURABLES: "Real nondurables consumption (diff in log)",
+        ids.DIFF_LOG_REAL_DURABLES: "Real durables consumption (diff in log)",
+        ids.DIFF_LOG_REAL_SAVINGS: "Real savings (diff in log)",
+        # # # # ids.NONDURABLES,
+        # # # # ids.DURABLES,
+        # # # ids.SAVINGS,
+        # # # ids.REAL_NONDURABLES,
+        # # # ids.REAL_DURABLES,
+        # # # ids.REAL_SAVINGS,
+    }
     ## Pre-process data
     # US data
     # * CPI
@@ -312,35 +334,24 @@ def main() -> None:
         ],
     )
 
-    cwt_measures = [
-        # # # ids.INFLATION,
-        ids.EXPECTATIONS,
-        ids.SAVINGS_RATE,
-        # # # ids.NONDURABLES,
-        # # # ids.DURABLES,
-        ids.NONDURABLES_CHG,
-        ids.DURABLES_CHG,
-        ids.SAVINGS_CHG,
-        # # ids.SAVINGS,
-        # # ids.REAL_NONDURABLES,
-        # # ids.REAL_DURABLES,
-        # # ids.REAL_SAVINGS,
-        ids.DIFF_LOG_CPI,
-        ids.DIFF_LOG_EXPECTATIONS,
-        ids.DIFF_LOG_NONDURABLES,
-        ids.DIFF_LOG_DURABLES,
-        ids.DIFF_LOG_SAVINGS,
-        ids.DIFF_LOG_REAL_NONDURABLES,
-        ids.DIFF_LOG_REAL_DURABLES,
-        ids.DIFF_LOG_REAL_SAVINGS,
-    ]
+    measured_inf = helpers.calculate_diff_in_log(
+        data=measured_inf,
+        columns=[ids.INFLATION],
+    )
+    logger.debug("df shape %s", measured_inf.shape)
 
-    for measure in cwt_measures:
+    for measure, label in cwt_measures.items():
         logger.debug(measure)
 
+        # * If INFLATION, use full series
+        if measure == ids.INFLATION:
+            data = measured_inf.copy()
+
+        else:
+            data = us_data.copy()
+
         # * Pre-process data: Standardize and detrend
-        logger.debug("nans: %s", us_data[f"{measure}"].isna().sum())
-        data = us_data.copy()
+        logger.debug("nans: %s", data[f"{measure}"].isna().sum())
         data = data.dropna()
         y1 = data[f"{measure}"].to_numpy()
         y1 = wavelet_helpers.standardize_series(
@@ -384,14 +395,14 @@ def main() -> None:
         # * Set labels/title
         ax.set_xlabel("", size=20)
         ax.set_ylabel("Period (years)", size=20)
-        ax.set_title(measure, size=20)
+        ax.set_title(label, size=20)
 
-        # * Export plot
-        parent_dir = Path(__file__).parents[1]
-        export_file = parent_dir / "results" / f"CWT_{measure}.png"
-        plt.savefig(export_file, bbox_inches="tight")
+        # # ! Export plot
+        # parent_dir = Path(__file__).parents[1]
+        # export_file = parent_dir / "results" / f"CWT_{measure}.png"
+        # plt.savefig(export_file, bbox_inches="tight")
 
-        # plt.show()
+        plt.show()
 
 
 if __name__ == "__main__":
