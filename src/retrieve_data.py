@@ -31,6 +31,8 @@ FED_KEY = os.getenv("FED_KEY")
 INSEE_AUTH = os.getenv("INSEE_AUTH")
 TIMEOUT = 5
 
+END_DATE = "2024-07-31"
+
 # * Define constant currency years
 CONSTANT_DOLLAR_DATE = "2017-12-01"
 
@@ -60,6 +62,7 @@ def get_fed_data(series: str, no_headers: bool = True, **kwargs) -> str:
 
     units = kwargs.get("units", None)
     freq = kwargs.get("freq", None)
+    realtime_end = kwargs.get("realtime_end", None)
 
     ## Request parameters
     params = {
@@ -67,6 +70,8 @@ def get_fed_data(series: str, no_headers: bool = True, **kwargs) -> str:
         "series_id": series,
         "units": units,
         "freq": freq,
+        "realtime_start": realtime_end,
+        "realtime_end": realtime_end,
         "file_type": "json",
     }
 
@@ -292,7 +297,7 @@ def main() -> None:
     # * Retrieve data
 
     ## CPI
-    raw_data = get_fed_data(ids.US_CPI)
+    raw_data = get_fed_data(ids.US_CPI, realtime_end=END_DATE)
     cpi, _, _ = clean_fed_data(raw_data)
     cpi.rename(columns={"value": "cpi"}, inplace=True)
 
@@ -328,10 +333,10 @@ def main() -> None:
     us_data = us_data.merge(dur_consump, how="left")
     us_data = us_data.merge(save, how="left")
 
-    # * Drop NaNs
-    us_data.dropna(inplace=True)
+    # # * Drop NaNs
+    # us_data.dropna(inplace=True)
 
-    print(us_data.head())
+    print(us_data.tail())
 
     # * Convert to constant dollars
     us_data["real_nondurable"] = convert_column_to_real_value(
