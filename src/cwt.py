@@ -11,13 +11,16 @@ from dataclasses import dataclass, field
 
 from typing import List, Type
 
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
-import matplotlib.pyplot as plt
+import pandas as pd
 
 import pycwt as wavelet
 
-from constants import ids
+from constants import ids, results_configs
+
+from src.utils import helpers, wavelet_helpers
 from src.utils.logging_helpers import define_other_module_log_level
 from src import retrieve_data
 from src.utils.wavelet_helpers import (
@@ -33,10 +36,7 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 # * Define title and labels for plots
-LABEL = "Expected inflation"
 UNITS = "%"
-
-MEASURE = ids.US_INF_EXPECTATIONS
 
 NORMALIZE = True  # Define normalization
 DT = 1 / 12  # In years
@@ -186,51 +186,212 @@ def plot_cwt(
 
 def main() -> None:
     """Run script"""
-    # * Retrieve dataset
-    raw_data = retrieve_data.get_fed_data(MEASURE)
-    df, t_date, _ = retrieve_data.clean_fed_data(raw_data)
-    df.rename(columns={"value": ids.EXPECTATIONS}, inplace=True)
+    ## Pre-process data
+    # US data
+    # * CPI
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_CPI,
+    )
+    cpi, _, _ = retrieve_data.clean_fed_data(raw_data)
+    cpi.rename(columns={"value": ids.CPI}, inplace=True)
 
-    data_for_cwt = DataForCWT(
-        t_date,
-        df[f"{ids.EXPECTATIONS}"].to_numpy(),
-        MOTHER,
-        DT,
-        DJ,
-        S0,
-        LEVELS,
+    # * Inflation rate
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_CPI,
+        units="pc1",
+        freq="m",
+    )
+    measured_inf, _, _ = retrieve_data.clean_fed_data(raw_data)
+    measured_inf.rename(columns={"value": ids.INFLATION}, inplace=True)
+
+    # * Inflation expectations
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_INF_EXPECTATIONS,
+    )
+    inf_exp, _, _ = retrieve_data.clean_fed_data(raw_data)
+    inf_exp.rename(columns={"value": ids.EXPECTATIONS}, inplace=True)
+
+    # * Non-durables consumption, monthly
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_NONDURABLES_CONSUMPTION,
+    )
+    nondur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
+    nondur_consump.rename(columns={"value": ids.NONDURABLES}, inplace=True)
+
+    # * Durables consumption, monthly
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_DURABLES_CONSUMPTION,
+    )
+    dur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
+    dur_consump.rename(columns={"value": ids.DURABLES}, inplace=True)
+
+    # * Non-durables consumption change, monthly
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_NONDURABLES_CONSUMPTION,
+        units="pc1",
+        freq="m",
+    )
+    nondur_consump_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+    nondur_consump_chg.rename(columns={"value": ids.NONDURABLES_CHG}, inplace=True)
+
+    # * Durables consumption change, monthly
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_DURABLES_CONSUMPTION,
+        units="pc1",
+        freq="m",
+    )
+    dur_consump_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+    dur_consump_chg.rename(columns={"value": ids.DURABLES_CHG}, inplace=True)
+
+    # * Personal savings
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_SAVINGS,
+    )
+    save, _, _ = retrieve_data.clean_fed_data(raw_data)
+    save.rename(columns={"value": ids.SAVINGS}, inplace=True)
+
+    # * Personal savings change
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_SAVINGS,
+        units="pc1",
+        freq="m",
+    )
+    save_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+    save_chg.rename(columns={"value": ids.SAVINGS_CHG}, inplace=True)
+
+    # * Personal savings rate
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_SAVINGS_RATE,
+    )
+    save_rate, _, _ = retrieve_data.clean_fed_data(raw_data)
+    save_rate.rename(columns={"value": ids.SAVINGS_RATE}, inplace=True)
+
+    # * Merge dataframes to align dates and remove extras
+    dataframes = [
+        cpi,
+        measured_inf,
+        inf_exp,
+        nondur_consump,
+        nondur_consump_chg,
+        dur_consump,
+        dur_consump_chg,
+        save,
+        save_chg,
+        save_rate,
+    ]
+    us_data = helpers.combine_series(dataframes, on=[ids.DATE], how="left")
+
+    # * Remove rows without data for all measures
+    us_data.dropna(inplace=True)
+
+    # * Add real value columns
+    logger.info(
+        "Using constant dollars from %s, CPI: %s",
+        results_configs.CONSTANT_DOLLAR_DATE,
+        us_data[
+            us_data[ids.DATE] == pd.Timestamp(results_configs.CONSTANT_DOLLAR_DATE)
+        ][ids.CPI].iat[0],
+    )
+    us_data = helpers.add_real_value_columns(
+        data=us_data,
+        nominal_columns=[ids.NONDURABLES, ids.DURABLES, ids.SAVINGS],
+        cpi_column=ids.CPI,
+        constant_date=results_configs.CONSTANT_DOLLAR_DATE,
+    )
+    us_data = helpers.calculate_diff_in_log(
+        data=us_data,
+        columns=[
+            ids.CPI,
+            ids.EXPECTATIONS,
+            ids.NONDURABLES,
+            ids.DURABLES,
+            ids.SAVINGS,
+            ids.REAL_NONDURABLES,
+            ids.REAL_DURABLES,
+            ids.REAL_SAVINGS,
+        ],
     )
 
-    results_from_cwt = run_cwt(data_for_cwt, normalize=True)
+    cwt_measures = [
+        # # # ids.INFLATION,
+        ids.EXPECTATIONS,
+        ids.SAVINGS_RATE,
+        # # # ids.NONDURABLES,
+        # # # ids.DURABLES,
+        ids.NONDURABLES_CHG,
+        ids.DURABLES_CHG,
+        ids.SAVINGS_CHG,
+        # # ids.SAVINGS,
+        # # ids.REAL_NONDURABLES,
+        # # ids.REAL_DURABLES,
+        # # ids.REAL_SAVINGS,
+        ids.DIFF_LOG_CPI,
+        ids.DIFF_LOG_EXPECTATIONS,
+        ids.DIFF_LOG_NONDURABLES,
+        ids.DIFF_LOG_DURABLES,
+        ids.DIFF_LOG_SAVINGS,
+        ids.DIFF_LOG_REAL_NONDURABLES,
+        ids.DIFF_LOG_REAL_DURABLES,
+        ids.DIFF_LOG_REAL_SAVINGS,
+    ]
 
-    # * Plot results
-    plt.close("all")
-    # plt.ioff()
-    figprops = {"figsize": (20, 10), "dpi": 72}
-    _, ax = plt.subplots(1, 1, **figprops)
+    for measure in cwt_measures:
+        logger.debug(measure)
 
-    # * Add plot features
-    cwt_plot_props = {
-        "cmap": "jet",
-        "sig_colors": "k",
-        "sig_linewidths": 2,
-        "coi_color": "k",
-        "coi_alpha": 0.3,
-        "coi_hatch": "--",
-    }
-    plot_cwt(ax, data_for_cwt, results_from_cwt, **cwt_plot_props)
+        # * Pre-process data: Standardize and detrend
+        logger.debug("nans: %s", us_data[f"{measure}"].isna().sum())
+        data = us_data.copy()
+        data = data.dropna()
+        y1 = data[f"{measure}"].to_numpy()
+        y1 = wavelet_helpers.standardize_series(
+            y1
+        )  # , detrend=False, remove_mean=True)
+        logger.debug(
+            "length of y1: %s. length of date: %s",
+            len(y1),
+            len(data["date"].to_numpy()),
+        )
 
-    # * Set labels/title
-    ax.set_xlabel("", size=20)
-    ax.set_ylabel("Period (years)", size=20)
-    ax.set_title(LABEL, size=20)
+        data_for_cwt = DataForCWT(
+            data["date"].to_numpy(),
+            y1,
+            MOTHER,
+            DT,
+            DJ,
+            S0,
+            LEVELS,
+        )
 
-    # * Export plot
-    parent_dir = Path(__file__).parents[1]
-    export_file = parent_dir / "results" / f"CWT_{LABEL}.png"
-    plt.savefig(export_file, bbox_inches="tight")
+        results_from_cwt = run_cwt(data_for_cwt, normalize=True)
 
-    plt.show()
+        # * Plot results
+        plt.close("all")
+        # plt.ioff()
+        figprops = {"figsize": (20, 10), "dpi": 72}
+        _, ax = plt.subplots(1, 1, **figprops)
+
+        # * Add plot features
+        cwt_plot_props = {
+            "cmap": "jet",
+            "sig_colors": "k",
+            "sig_linewidths": 2,
+            "coi_color": "k",
+            "coi_alpha": 0.3,
+            "coi_hatch": "--",
+        }
+        plot_cwt(ax, data_for_cwt, results_from_cwt, **cwt_plot_props)
+
+        # * Set labels/title
+        ax.set_xlabel("", size=20)
+        ax.set_ylabel("Period (years)", size=20)
+        ax.set_title(measure, size=20)
+
+        # * Export plot
+        parent_dir = Path(__file__).parents[1]
+        export_file = parent_dir / "results" / f"CWT_{measure}.png"
+        plt.savefig(export_file, bbox_inches="tight")
+
+        # plt.show()
 
 
 if __name__ == "__main__":
