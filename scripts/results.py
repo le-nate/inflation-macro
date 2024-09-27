@@ -534,103 +534,59 @@ plt.show()
 # %% [markdown]
 ## 3.3) Regression analysis
 ### 3.3.1) Baseline model
-# Nondurables consumption
-results_nondur = regression.simple_regression(
-    us_data.dropna(), ids.EXPECTATIONS, ids.NONDURABLES_CHG
+regressions = {}
+
+for comp in SERIES_COMPARISONS[14:17]:
+    regressions[comp[1]] = regression.simple_regression(
+        us_data.dropna(), comp[0], comp[1]
+    )
+
+results = statsmodels.iolib.summary2.summary_col(
+    list(regressions.values()),
+    stars=True,
+    model_names=list(regressions),
 )
-results_nondur.summary()
+results
 
 # %% [markdown]
-# Durables consumption
-results_dur = regression.simple_regression(
-    us_data.dropna(), ids.EXPECTATIONS, ids.DURABLES_CHG
+#### Percentages
+regressions = {}
+
+for comp in SERIES_COMPARISONS[1:3] + [(ids.EXPECTATIONS, ids.SAVINGS_CHG)]:
+    regressions[comp[1]] = regression.simple_regression(
+        us_data.dropna(), comp[0], comp[1]
+    )
+
+results = statsmodels.iolib.summary2.summary_col(
+    list(regressions.values()),
+    stars=True,
+    model_names=list(regressions),
 )
-results_dur.summary()
+results
 
 # %% [markdown]
-# Savings
-results_sav = regression.simple_regression(
-    us_data.dropna(), ids.DIFF_LOG_EXPECTATIONS, ids.SAVINGS_CHG
+#### Real terms
+regressions = {}
+
+for comp in SERIES_COMPARISONS[17:]:
+    regressions[comp[1]] = regression.simple_regression(
+        us_data.dropna(), comp[0], comp[1]
+    )
+
+results = statsmodels.iolib.summary2.summary_col(
+    list(regressions.values()),
+    stars=True,
+    model_names=list(regressions),
 )
-results_sav.summary()
-
-# %% [markdown]
-## 3.3.2) Wavelet approximation
-# Figure 12 - Wavelet Smoothing of Inflation Expectations (US)
-dwt_results_dict[ids.EXPECTATIONS].smooth_signal(
-    dwt_dict[ids.EXPECTATIONS].y_values, dwt_dict[ids.EXPECTATIONS].mother_wavelet
-)
-fig = dwt.plot_smoothing(
-    dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
-    t,
-    dwt_dict[ids.EXPECTATIONS].y_values,
-    figsize=(10, 10),
-)
-plt.tight_layout()
-plt.show()
-
-
-# %% [markdown]
-# Table 4 - Wavelet Approximation: OLS Regression Inflation Expectations and
-# Nondurables Consumption (US) <br><br>
-
-# For our wavelet approximation of the OLS regression of nondurables consumption
-# on inflation expectations, we use S_2, removing D_1 and D_2. Table 4 shows
-# the results. Overall, there is little change in the results compared to the
-# simple regression.
-approximations = regression.wavelet_approximation(
-    smooth_t_dict=dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
-    original_y=dwt_dict[ids.NONDURABLES_CHG].y_values,
-    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-)
-
-# * Remove D_1 and D_2
-apprx = approximations[2]
-apprx.summary()
-
-# %% [markdown]
-# Table 5 - Wavelet Approximation: OLS Regression Inflation Expectations and
-# Durables Consumption with S_2 (US) <br><br>
-
-# The same is true for durables, when removing components D_1 and D_2 (Table 5).
-# Given how absolutely inconclusive the OLS regression is, we further test the
-# impact of a regression with almost purely smoothed expectations in S_5=S_6+D_6
-# as well. Again, we cannot reject the null hypothesis (Table 6).
-approximations = regression.wavelet_approximation(
-    smooth_t_dict=dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
-    original_y=dwt_dict[ids.DURABLES_CHG].y_values,
-    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-)
-
-# * Remove D_1 and D_2
-apprx = approximations[2]
-apprx.summary()
-
-# %% [markdown]
-# Table 6 - Wavelet Approximation: OLS Regression Inflation Expectations and
-# Durables Consumption with S_5 (US) <br><br>
-# * Remove D_1 through D_5
-apprx = approximations[5]
-apprx.summary()
-
-# %% [markdown]
-# Table XX - Wavelet Approximation: OLS Regression Inflation Expectations and
-# Savings (US)
-approximations = regression.wavelet_approximation(
-    smooth_t_dict=dwt_results_dict[ids.EXPECTATIONS].smoothed_signal_dict,
-    original_y=dwt_dict[ids.SAVINGS_CHG].y_values,
-    levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-)
-
-# * Remove D_1 and D_2
-apprx = approximations[2]
-apprx.summary()
+results
 
 # %% [markdown]
 ## 3.3) Time scale regression
 # Table 7 - Time Scale Decomposition: OLS Regression of Nondurables Consumption
 # on Inflation Expectations (US)
-for comp in SERIES_COMPARISONS:
+for comp in (
+    SERIES_COMPARISONS[14:17] + SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[17:]
+):
     time_scale_results = regression.time_scale_regression(
         input_coeffs=dwt_results_dict[comp[0]].coeffs,
         output_coeffs=dwt_results_dict[comp[1]].coeffs,
@@ -639,36 +595,112 @@ for comp in SERIES_COMPARISONS:
     )
     print(f"\nRegressing {comp[1]} on {comp[0]}")
     print(time_scale_results.as_text())
-
-# # %% [markdown]
-# # Table 8 - Time Scale Decomposition: OLS Regression of Durables Consumption on
-# # Inflation Expectations (US)
-
-# # %%
-# time_scale_results = regression.time_scale_regression(
-#     input_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-#     output_coeffs=dwt_results_dict[ids.DURABLES_CHG].coeffs,
-#     levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-#     mother_wavelet=dwt_mother_wavelet,
-# )
-# time_scale_results
-
-
-# # %% [markdown]
-# # Table XX - Time Scale Decomposition: OLS Regression of Savings on
-# # Inflation Expectations (US)
-
-# # %%
-# time_scale_results = regression.time_scale_regression(
-#     input_coeffs=dwt_results_dict[ids.EXPECTATIONS].coeffs,
-#     output_coeffs=dwt_results_dict[ids.SAVINGS_CHG].coeffs,
-#     levels=dwt_results_dict[ids.EXPECTATIONS].levels,
-#     mother_wavelet=dwt_mother_wavelet,
-# )
-# print(time_scale_results.as_text())
-
+    time_scale_results
 
 # %% [markdown]
-# Figure 13 - Example, Phase differences
-# %%
-phase_diff_sines.plot_phase_diff(export=False)
+### Nondurables
+comp = (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_NONDURABLES)
+print(f"Regressing {comp[1]} on {comp[0]}")
+time_scale_results = regression.time_scale_regression(
+    input_coeffs=dwt_results_dict[comp[0]].coeffs,
+    output_coeffs=dwt_results_dict[comp[1]].coeffs,
+    levels=dwt_results_dict[comp[0]].levels,
+    mother_wavelet=results_configs.DWT_MOTHER_WAVELET,
+)
+time_scale_results
+
+# %% [markdown]
+### Nondurables (% chg)
+comp = (ids.EXPECTATIONS, ids.NONDURABLES_CHG)
+print(f"Regressing {comp[1]} on {comp[0]}")
+time_scale_results = regression.time_scale_regression(
+    input_coeffs=dwt_results_dict[comp[0]].coeffs,
+    output_coeffs=dwt_results_dict[comp[1]].coeffs,
+    levels=dwt_results_dict[comp[0]].levels,
+    mother_wavelet=results_configs.DWT_MOTHER_WAVELET,
+)
+time_scale_results
+
+# %% [markdown]
+### Nondurables (real)
+comp = (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_NONDURABLES)
+print(f"Regressing {comp[1]} on {comp[0]}")
+time_scale_results = regression.time_scale_regression(
+    input_coeffs=dwt_results_dict[comp[0]].coeffs,
+    output_coeffs=dwt_results_dict[comp[1]].coeffs,
+    levels=dwt_results_dict[comp[0]].levels,
+    mother_wavelet=results_configs.DWT_MOTHER_WAVELET,
+)
+time_scale_results
+
+# %% [markdown]
+### Durables
+comp = (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_DURABLES)
+print(f"Regressing {comp[1]} on {comp[0]}")
+time_scale_results = regression.time_scale_regression(
+    input_coeffs=dwt_results_dict[comp[0]].coeffs,
+    output_coeffs=dwt_results_dict[comp[1]].coeffs,
+    levels=dwt_results_dict[comp[0]].levels,
+    mother_wavelet=results_configs.DWT_MOTHER_WAVELET,
+)
+time_scale_results
+
+# %% [markdown]
+### Durables (% chg)
+comp = (ids.EXPECTATIONS, ids.DURABLES_CHG)
+print(f"Regressing {comp[1]} on {comp[0]}")
+time_scale_results = regression.time_scale_regression(
+    input_coeffs=dwt_results_dict[comp[0]].coeffs,
+    output_coeffs=dwt_results_dict[comp[1]].coeffs,
+    levels=dwt_results_dict[comp[0]].levels,
+    mother_wavelet=results_configs.DWT_MOTHER_WAVELET,
+)
+time_scale_results
+
+# %% [markdown]
+### Durables (real)
+comp = (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_DURABLES)
+print(f"Regressing {comp[1]} on {comp[0]}")
+time_scale_results = regression.time_scale_regression(
+    input_coeffs=dwt_results_dict[comp[0]].coeffs,
+    output_coeffs=dwt_results_dict[comp[1]].coeffs,
+    levels=dwt_results_dict[comp[0]].levels,
+    mother_wavelet=results_configs.DWT_MOTHER_WAVELET,
+)
+time_scale_results
+
+# %% [markdown]
+### Savings
+comp = (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_SAVINGS)
+print(f"Regressing {comp[1]} on {comp[0]}")
+time_scale_results = regression.time_scale_regression(
+    input_coeffs=dwt_results_dict[comp[0]].coeffs,
+    output_coeffs=dwt_results_dict[comp[1]].coeffs,
+    levels=dwt_results_dict[comp[0]].levels,
+    mother_wavelet=results_configs.DWT_MOTHER_WAVELET,
+)
+time_scale_results
+
+# %% [markdown]
+### Savings (% chg)
+comp = (ids.EXPECTATIONS, ids.SAVINGS_RATE)
+print(f"Regressing {comp[1]} on {comp[0]}")
+time_scale_results = regression.time_scale_regression(
+    input_coeffs=dwt_results_dict[comp[0]].coeffs,
+    output_coeffs=dwt_results_dict[comp[1]].coeffs,
+    levels=dwt_results_dict[comp[0]].levels,
+    mother_wavelet=results_configs.DWT_MOTHER_WAVELET,
+)
+time_scale_results
+
+# %% [markdown]
+### Savings (real)
+comp = (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_SAVINGS)
+print(f"Regressing {comp[1]} on {comp[0]}")
+time_scale_results = regression.time_scale_regression(
+    input_coeffs=dwt_results_dict[comp[0]].coeffs,
+    output_coeffs=dwt_results_dict[comp[1]].coeffs,
+    levels=dwt_results_dict[comp[0]].levels,
+    mother_wavelet=results_configs.DWT_MOTHER_WAVELET,
+)
+time_scale_results
