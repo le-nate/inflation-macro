@@ -3,15 +3,19 @@
 from __future__ import division
 from dataclasses import dataclass, field
 import logging
+from pathlib import Path
 import sys
 from typing import List, Tuple, Type
 
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
-import matplotlib.pyplot as plt
+import pandas as pd
+
 import pycwt as wavelet
 
-from constants import ids
+from constants import ids, results_configs
+
 from src import retrieve_data
 from src.utils import helpers, wavelet_helpers
 from src.utils.logging_helpers import define_other_module_log_level
@@ -258,145 +262,310 @@ def plot_phase_difference(
 def main() -> None:
     """Run script"""
 
-    # * Load dataset
-    measure_1 = ids.US_INF_EXPECTATIONS
-    raw_data = retrieve_data.get_fed_data(measure_1)
-    df1, _, _ = retrieve_data.clean_fed_data(raw_data)
+    series_comparisons = [
+        (ids.DIFF_LOG_CPI, ids.EXPECTATIONS),
+        (ids.EXPECTATIONS, ids.NONDURABLES_CHG),
+        (ids.EXPECTATIONS, ids.DURABLES_CHG),
+        (ids.EXPECTATIONS, ids.SAVINGS_CHG),
+        (ids.DIFF_LOG_CPI, ids.DIFF_LOG_EXPECTATIONS),
+        (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_NONDURABLES),
+        (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_DURABLES),
+        (ids.DIFF_LOG_CPI, ids.DIFF_LOG_REAL_SAVINGS),
+        (ids.EXPECTATIONS, ids.DIFF_LOG_NONDURABLES),
+        (ids.EXPECTATIONS, ids.DIFF_LOG_DURABLES),
+        (ids.EXPECTATIONS, ids.DIFF_LOG_SAVINGS),
+        (ids.EXPECTATIONS, ids.DIFF_LOG_REAL_NONDURABLES),
+        (ids.EXPECTATIONS, ids.DIFF_LOG_REAL_DURABLES),
+        (ids.EXPECTATIONS, ids.DIFF_LOG_REAL_SAVINGS),
+        (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_NONDURABLES),
+        (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_DURABLES),
+        (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_SAVINGS),
+        (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_NONDURABLES),
+        (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_DURABLES),
+        (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_SAVINGS),
+    ]
 
-    measure_2 = ids.US_NONDURABLES_CONSUMPTION
-    raw_data = retrieve_data.get_fed_data(measure_2)
-    df2, _, _ = retrieve_data.clean_fed_data(raw_data)
+    series_titles = {
+        ids.INFLATION: "CPI inflation",
+        ids.EXPECTATIONS: "Inflation expectations",
+        ids.SAVINGS_RATE: "Savings rate",
+        ids.NONDURABLES_CHG: "Nondurables consumption (% chg)",
+        ids.DURABLES_CHG: "Durables consumption (% chg)",
+        ids.SAVINGS_CHG: "Savings (% chg)",
+        ids.DIFF_LOG_CPI: "CPI inflation (diff in log)",
+        ids.DIFF_LOG_EXPECTATIONS: "Inflation expectations (diff in log)",
+        ids.DIFF_LOG_NONDURABLES: "Nondurables consumption (diff in log)",
+        ids.DIFF_LOG_DURABLES: "Durables consumption (diff in log)",
+        ids.DIFF_LOG_SAVINGS: "Savings (diff in log)",
+        ids.DIFF_LOG_REAL_NONDURABLES: "Real nondurables consumption (diff in log)",
+        ids.DIFF_LOG_REAL_DURABLES: "Real durables consumption (diff in log)",
+        ids.DIFF_LOG_REAL_SAVINGS: "Real savings (diff in log)",
+        # # # # ids.NONDURABLES,
+        # # # # ids.DURABLES,
+        # # # ids.SAVINGS,
+        # # # ids.REAL_NONDURABLES,
+        # # # ids.REAL_DURABLES,
+        # # # ids.REAL_SAVINGS,
+    }
+    ## Pre-process data
+    # US data
+    # * CPI
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_CPI,
+    )
+    cpi, _, _ = retrieve_data.clean_fed_data(raw_data)
+    cpi.rename(columns={"value": ids.CPI}, inplace=True)
 
-    # * Pre-process data: Align time series temporally
-    dfcombo = df1.merge(df2, how="left", on="date", suffixes=("_1", "_2"))
+    # * Inflation rate
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_CPI,
+        units="pc1",
+        freq="m",
+    )
+    measured_inf, _, _ = retrieve_data.clean_fed_data(raw_data)
+    measured_inf.rename(columns={"value": ids.INFLATION}, inplace=True)
 
-    # * Add diff in log
-    dfcombo = helpers.calculate_diff_in_log(
-        dfcombo, ["value_1", "value_2"], new_columns=True
+    # * Inflation expectations
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_INF_EXPECTATIONS,
+    )
+    inf_exp, _, _ = retrieve_data.clean_fed_data(raw_data)
+    inf_exp.rename(columns={"value": ids.EXPECTATIONS}, inplace=True)
+
+    # * Non-durables consumption, monthly
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_NONDURABLES_CONSUMPTION,
+    )
+    nondur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
+    nondur_consump.rename(columns={"value": ids.NONDURABLES}, inplace=True)
+
+    # * Durables consumption, monthly
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_DURABLES_CONSUMPTION,
+    )
+    dur_consump, _, _ = retrieve_data.clean_fed_data(raw_data)
+    dur_consump.rename(columns={"value": ids.DURABLES}, inplace=True)
+
+    # * Non-durables consumption change, monthly
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_NONDURABLES_CONSUMPTION,
+        units="pc1",
+        freq="m",
+    )
+    nondur_consump_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+    nondur_consump_chg.rename(columns={"value": ids.NONDURABLES_CHG}, inplace=True)
+
+    # * Durables consumption change, monthly
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_DURABLES_CONSUMPTION,
+        units="pc1",
+        freq="m",
+    )
+    dur_consump_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+    dur_consump_chg.rename(columns={"value": ids.DURABLES_CHG}, inplace=True)
+
+    # * Personal savings
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_SAVINGS,
+    )
+    save, _, _ = retrieve_data.clean_fed_data(raw_data)
+    save.rename(columns={"value": ids.SAVINGS}, inplace=True)
+
+    # * Personal savings change
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_SAVINGS,
+        units="pc1",
+        freq="m",
+    )
+    save_chg, _, _ = retrieve_data.clean_fed_data(raw_data)
+    save_chg.rename(columns={"value": ids.SAVINGS_CHG}, inplace=True)
+
+    # * Personal savings rate
+    raw_data = retrieve_data.get_fed_data(
+        ids.US_SAVINGS_RATE,
+    )
+    save_rate, _, _ = retrieve_data.clean_fed_data(raw_data)
+    save_rate.rename(columns={"value": ids.SAVINGS_RATE}, inplace=True)
+
+    # * Merge dataframes to align dates and remove extras
+    dataframes = [
+        cpi,
+        measured_inf,
+        inf_exp,
+        nondur_consump,
+        nondur_consump_chg,
+        dur_consump,
+        dur_consump_chg,
+        save,
+        save_chg,
+        save_rate,
+    ]
+    us_data = helpers.combine_series(dataframes, on=[ids.DATE], how="left")
+
+    # * Remove rows without data for all measures
+    us_data.dropna(inplace=True)
+
+    # * Add real value columns
+    logger.info(
+        "Using constant dollars from %s, CPI: %s",
+        results_configs.CONSTANT_DOLLAR_DATE,
+        us_data[
+            us_data[ids.DATE] == pd.Timestamp(results_configs.CONSTANT_DOLLAR_DATE)
+        ][ids.CPI].iat[0],
+    )
+    us_data = helpers.add_real_value_columns(
+        data=us_data,
+        nominal_columns=[ids.NONDURABLES, ids.DURABLES, ids.SAVINGS],
+        cpi_column=ids.CPI,
+        constant_date=results_configs.CONSTANT_DOLLAR_DATE,
+    )
+    us_data = helpers.calculate_diff_in_log(
+        data=us_data,
+        columns=[
+            ids.CPI,
+            ids.EXPECTATIONS,
+            ids.NONDURABLES,
+            ids.DURABLES,
+            ids.SAVINGS,
+            ids.REAL_NONDURABLES,
+            ids.REAL_DURABLES,
+            ids.REAL_SAVINGS,
+        ],
     )
 
-    dfcombo.dropna(inplace=True)
-    print(dfcombo.head())
-
-    # * Pre-process data: Standardize and detrend
-    y1 = dfcombo["value_1"].to_numpy()
-    y2 = dfcombo["value_2"].to_numpy()
-    y1 = wavelet_helpers.standardize_series(y1, detrend=False, remove_mean=True)
-    y2 = wavelet_helpers.standardize_series(y2, detrend=True, remove_mean=False)
-
-    # * For diff in log
-    y1_diff_log = dfcombo["diff_log_value_1"].to_numpy()
-    y1_diff_log = wavelet_helpers.standardize_series(
-        y1_diff_log, detrend=True, remove_mean=False
+    measured_inf = helpers.calculate_diff_in_log(
+        data=measured_inf,
+        columns=[ids.INFLATION],
     )
-    y2_diff_log = dfcombo["diff_log_value_2"].to_numpy()
-    y2_diff_log = wavelet_helpers.standardize_series(
-        y2_diff_log, detrend=True, remove_mean=False
-    )
+    logger.debug("df shape %s", measured_inf.shape)
 
-    # * For diff in log
-    y1_diff_log = dfcombo["diff_log_value_1"].to_numpy()
-    y1_diff_log = wavelet_helpers.standardize_series(
-        y1_diff_log, detrend=True, remove_mean=False
-    )
-    y2_diff_log = dfcombo["diff_log_value_2"].to_numpy()
-    y2_diff_log = wavelet_helpers.standardize_series(
-        y2_diff_log, detrend=True, remove_mean=False
-    )
+    for comp in series_comparisons[1:4] + series_comparisons[14:]:
 
-    mother_xwt = MOTHER_DICT[MOTHER]
+        logger.debug(comp)
 
-    xwt_data = DataForXWT(
-        y1_values=y1,
-        y2_values=y2_diff_log,
-        mother_wavelet=mother_xwt,
-        delta_t=DT,
-        delta_j=DJ,
-        initial_scale=S0,
-        levels=LEVELS,
-    )
+        # * Pre-process data: Standardize and detrend
 
-    results_from_xwt = run_xwt(xwt_data, ignore_strong_trends=False)
+        ## Create a copy of dataframe to drop NaNs
+        data = us_data.copy()
+        logger.debug("NaNs: %s", data.isna().sum())
+        data = data.dropna(subset=[comp[0], comp[1]])
+        logger.debug(data.shape)
 
-    diff_log_xwt_data = DataForXWT(
-        y1_values=y1_diff_log,
-        y2_values=y2_diff_log,
-        mother_wavelet=mother_xwt,
-        delta_t=DT,
-        delta_j=DJ,
-        initial_scale=S0,
-        levels=LEVELS,
-    )
+        y1 = data[comp[0]].to_numpy()
+        y2 = data[comp[1]].to_numpy()
+        y1 = wavelet_helpers.standardize_series(y1, detrend=False, remove_mean=True)
+        y2 = wavelet_helpers.standardize_series(y2, detrend=True, remove_mean=False)
 
-    diff_log_results_from_xwt = run_xwt(diff_log_xwt_data, ignore_strong_trends=False)
+        # # * For diff in log
+        # y1_diff_log = us_data["diff_log_value_1"].to_numpy()
+        # y1_diff_log = wavelet_helpers.standardize_series(
+        #     y1_diff_log, detrend=True, remove_mean=False
+        # )
+        # y2_diff_log = us_data["diff_log_value_2"].to_numpy()
+        # y2_diff_log = wavelet_helpers.standardize_series(
+        #     y2_diff_log, detrend=True, remove_mean=False
+        # )
 
-    # * Plot XWT power spectrum
-    _, axs = plt.subplots(1, 1, figsize=(10, 8), sharex=True)
+        mother_xwt = MOTHER_DICT[MOTHER]
 
-    # plot_xwt(
-    #     axs[0],
-    #     xwt_data,
-    #     results_from_xwt,
-    #     include_significance=True,
-    #     include_cone_of_influence=True,
-    #     include_phase_difference=True,
-    #     **XWT_PLOT_PROPS,
-    # )
+        xwt_data = DataForXWT(
+            y1_values=y1,
+            y2_values=y2,
+            mother_wavelet=mother_xwt,
+            delta_t=DT,
+            delta_j=DJ,
+            initial_scale=S0,
+            levels=LEVELS,
+        )
 
-    plot_xwt(
-        axs,
-        diff_log_xwt_data,
-        diff_log_results_from_xwt,
-        include_significance=True,
-        include_cone_of_influence=True,
-        include_phase_difference=True,
-        **XWT_PLOT_PROPS,
-    )
+        results_from_xwt = run_xwt(xwt_data, ignore_strong_trends=True)
 
-    # # * Invert y axis
-    # for ax, results, diff in zip(
-    #     axs, [results_from_xwt, diff_log_results_from_xwt], ["", " (Diff-in-log)"]
-    # ):
-    #     ax.set_ylim(ax.get_ylim()[::-1])
+        # diff_log_xwt_data = DataForXWT(
+        #     y1_values=y1_diff_log,
+        #     y2_values=y2_diff_log,
+        #     mother_wavelet=mother_xwt,
+        #     delta_t=DT,
+        #     delta_j=DJ,
+        #     initial_scale=S0,
+        #     levels=LEVELS,
+        # )
 
-    #     # * Set y axis tick labels
-    #     y_ticks = 2 ** np.arange(
-    #         np.ceil(np.log2(results.period.min())),
-    #         np.ceil(np.log2(results.period.max())),
-    #     )
-    #     ax.set_yticks(np.log2(y_ticks))
-    #     ax.set_yticklabels(y_ticks)
+        # diff_log_results_from_xwt = run_xwt(
+        #     diff_log_xwt_data, ignore_strong_trends=True
+        # )
 
-    #     ax.set_title(f"{measure_1} X {measure_2}{diff}")
-    #     ax.set_ylabel("Period (years)")
+        # * Plot XWT power spectrum
+        _, axs = plt.subplots(1, 1, figsize=(10, 8), sharex=True)
 
-    axs.set_ylim(axs.get_ylim()[::-1])
+        plot_xwt(
+            axs,
+            xwt_data,
+            results_from_xwt,
+            include_significance=True,
+            include_cone_of_influence=True,
+            include_phase_difference=True,
+            **XWT_PLOT_PROPS,
+        )
 
-    # * Set y axis tick labels
-    y_ticks = 2 ** np.arange(
-        np.ceil(np.log2(results_from_xwt.period.min())),
-        np.ceil(np.log2(results_from_xwt.period.max())),
-    )
-    axs.set_yticks(np.log2(y_ticks))
-    axs.set_yticklabels(y_ticks, size=15)
+        # plot_xwt(
+        #     axs[1],
+        #     diff_log_xwt_data,
+        #     diff_log_results_from_xwt,
+        #     include_significance=True,
+        #     include_cone_of_influence=True,
+        #     include_phase_difference=True,
+        #     **XWT_PLOT_PROPS,
+        # )
 
-    # * Set x axis tick labels
-    dates = df1["date"].to_list()
-    x_dates = [dates[0]] + [dates[i + 99] for i in range(0, 500, 100)]
-    x_ticks = [str(date.year) for date in x_dates]
-    x_tick_positions = [i for i in range(0, 600, 100)]
-    logger.debug("dates %s", x_ticks)
-    logger.debug("dates %s", x_tick_positions)
-    logger.debug("dates len %s", len(x_ticks))
-    axs.set_xticks(x_tick_positions)
-    axs.set_xticklabels(x_ticks, size=15)
-    # date_format = DateFormatter("%Y")
-    # axs.xaxis.set_major_formatter(date_format)
+        # * Invert y axis
+        # for ax, results, diff in zip(
+        #     axs, [results_from_xwt, diff_log_results_from_xwt], ["", " (Diff-in-log)"]
+        # ):
+        #     ax.set_ylim(ax.get_ylim()[::-1])
 
-    axs.set_title("Expected inflation X Nondurables consumption (Diff-in-log)", size=20)
-    axs.set_ylabel("Period (years)", size=20)
+        #     # * Set y axis tick labels
+        #     y_ticks = 2 ** np.arange(
+        #         np.ceil(np.log2(results.period.min())),
+        #         np.ceil(np.log2(results.period.max())),
+        #     )
+        #     ax.set_yticks(np.log2(y_ticks))
+        #     ax.set_yticklabels(y_ticks)
 
-    plt.show()
+        #     ax.set_title(f"{series_titles[comp[0]]} X {series_titles[comp[1]]}{diff}")
+        #     ax.set_ylabel("Period (years)")
+
+        axs.set_ylim(axs.get_ylim()[::-1])
+
+        # * Set y axis tick labels
+        y_ticks = 2 ** np.arange(
+            np.ceil(np.log2(results_from_xwt.period.min())),
+            np.ceil(np.log2(results_from_xwt.period.max())),
+        )
+        axs.set_yticks(np.log2(y_ticks))
+        axs.set_yticklabels(y_ticks, size=12)
+
+        # * Set x axis tick labels
+        dates = us_data["date"].to_list()
+        x_dates = [dates[0]] + [dates[i + 99] for i in range(0, 500, 100)]
+        x_ticks = [str(date.year) for date in x_dates]
+        x_tick_positions = [i for i in range(0, 600, 100)]
+        logger.debug("dates %s", x_ticks)
+        logger.debug("dates %s", x_tick_positions)
+        logger.debug("dates len %s", len(x_ticks))
+        axs.set_xticks(x_tick_positions)
+        axs.set_xticklabels(x_ticks, size=12)
+        # date_format = DateFormatter("%Y")
+        # axs.xaxis.set_major_formatter(date_format)
+
+        axs.set_title(f"{series_titles[comp[0]]} X {series_titles[comp[1]]}", size=16)
+        axs.set_ylabel("Period (years)", size=14)
+
+        # ! Export plot
+        parent_dir = Path(__file__).parents[1]
+        export_file = parent_dir / "results" / f"xwt_module_{comp[0]}_{comp[1]}.png"
+        plt.savefig(export_file, bbox_inches="tight")
+
+        # plt.show()
 
 
 if __name__ == "__main__":

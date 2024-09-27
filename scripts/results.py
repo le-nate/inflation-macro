@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import statsmodels.iolib.summary2
 
 from constants import ids, results_configs
 from src import (
@@ -65,6 +66,10 @@ SERIES_COMPARISONS = [
     (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_DURABLES),
     (ids.DIFF_LOG_EXPECTATIONS, ids.DIFF_LOG_REAL_SAVINGS),
 ]
+
+# %% [markdown]
+# Figure 1 - Example, Phase differences
+phase_diff_sines.plot_phase_diff(export=False)
 
 # %% [markdown]
 ## Pre-process data
@@ -259,7 +264,8 @@ dx = sns.lineplot(data=data, x="Date", y="%", hue="variable", ax=dx)
 dx.legend().set_title(None)
 dx.legend(loc="upper center", frameon=False)
 
-## Save plot
+
+# ! Export figure
 # parent_dir = Path(__file__).parents[1]
 # export_file = parent_dir / "results" / f"time_series_plots.png"
 # plt.savefig(export_file, bbox_inches="tight")
@@ -341,6 +347,8 @@ fig = dwt.plot_components(
     sharex=True,
 )
 plt.legend("", frameon=False)
+
+# ! Export figure
 # parent_dir = Path(__file__).parents[1]
 # export_file = parent_dir / "results" / "expectations_decomposition.png"
 # plt.savefig(export_file, bbox_inches="tight")
@@ -361,6 +369,7 @@ fig = dwt.plot_smoothing(
     sharex=True,
 )
 
+# ! Export figure
 # plt.legend("", frameon=False)
 # parent_dir = Path(__file__).parents[1]
 # export_file = parent_dir / "results" / "expectations_smoothing.png"
@@ -381,6 +390,7 @@ for comp in SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[14:17]:
         figsize=(10, 15),
         sharex=True,
     )
+    # ! Export figure
     # parent_dir = Path(__file__).parents[1]
     # export_file = parent_dir / "results" / f"decomposition_{comp[0]}_{comp[1]}.png"
     # plt.savefig(export_file, bbox_inches="tight")
@@ -455,31 +465,37 @@ plt.show()
 phase_diff_key.plot_phase_difference_key(export=False)
 
 # %%
+comparisons = (
+    SERIES_COMPARISONS[14:17]
+    + SERIES_COMPARISONS[1:3]
+    + [(ids.EXPECTATIONS, ids.SAVINGS_CHG)]
+)
+
 # * Pre-process data: Standardize and detrend
 xwt_dict = create_xwt_dict(
     us_data,
-    SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[14:17],
+    comparisons,
     detrend=False,
     remove_mean=True,
 )
 
 xwt_results_dict = create_xwt_results_dict(
     xwt_dict,
-    SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[14:17],
+    comparisons,
     ignore_strong_trends=False,
 )
 
 # * Plot XWT power spectrum
-TOTAL_SUBPLOTS = len(SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[14:17])
-PLOT_COLS = 2
-PLOT_ROWS = TOTAL_SUBPLOTS // 2
+TOTAL_SUBPLOTS = len(comparisons)
+PLOT_COLS = TOTAL_SUBPLOTS // 2
+PLOT_ROWS = 2
 if TOTAL_SUBPLOTS % PLOT_COLS != 0:
     PLOT_ROWS += 1
 
-fig = plt.figure(1, figsize=(10, 10))
+fig = plt.figure(1, figsize=(20, 10))
 axes = []
 POSITION = 0
-for i, comp in enumerate(SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[14:17]):
+for i, comp in enumerate(comparisons):
     POSITION = i + 1
     ax = fig.add_subplot(PLOT_ROWS, PLOT_COLS, POSITION)
     axes.append(ax)
