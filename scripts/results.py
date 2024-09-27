@@ -280,7 +280,7 @@ descriptive_statistics_results = descriptive_stats.generate_descriptive_statisti
         ]
     ].dropna(),
     results_configs.STATISTICS_TESTS,
-    export_table=True,
+    export_table=False,
 )
 descriptive_statistics_results
 
@@ -292,7 +292,7 @@ us_corr = descriptive_stats.correlation_matrix_pvalues(
     hypothesis_threshold=results_configs.HYPOTHESIS_THRESHOLD,
     decimals=results_configs.DECIMAL_PLACES,
     display=False,
-    export_table=True,
+    export_table=False,
 )
 us_corr
 
@@ -456,14 +456,21 @@ phase_diff_key.plot_phase_difference_key(export=False)
 
 # %%
 # * Pre-process data: Standardize and detrend
-xwt_dict = create_xwt_dict(us_data, SERIES_COMPARISONS, detrend=False, remove_mean=True)
+xwt_dict = create_xwt_dict(
+    us_data,
+    SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[14:17],
+    detrend=False,
+    remove_mean=True,
+)
 
 xwt_results_dict = create_xwt_results_dict(
-    xwt_dict, SERIES_COMPARISONS, ignore_strong_trends=False
+    xwt_dict,
+    SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[14:17],
+    ignore_strong_trends=False,
 )
 
 # * Plot XWT power spectrum
-TOTAL_SUBPLOTS = len(SERIES_COMPARISONS)
+TOTAL_SUBPLOTS = len(SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[14:17])
 PLOT_COLS = 2
 PLOT_ROWS = TOTAL_SUBPLOTS // 2
 if TOTAL_SUBPLOTS % PLOT_COLS != 0:
@@ -472,7 +479,7 @@ if TOTAL_SUBPLOTS % PLOT_COLS != 0:
 fig = plt.figure(1, figsize=(10, 10))
 axes = []
 POSITION = 0
-for i, comp in enumerate(SERIES_COMPARISONS):
+for i, comp in enumerate(SERIES_COMPARISONS[1:4] + SERIES_COMPARISONS[14:17]):
     POSITION = i + 1
     ax = fig.add_subplot(PLOT_ROWS, PLOT_COLS, POSITION)
     axes.append(ax)
